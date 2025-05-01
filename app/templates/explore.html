@@ -1,0 +1,732 @@
+{% extends "base.html" %}
+
+{% block title %}Explore - Space Ontology{% endblock %}
+
+{% block extra_css %}
+<style>
+    .classes-container {
+        height: 400px;
+        overflow-y: auto;
+    }
+    
+    .entity-card {
+        height: 100%;
+        cursor: pointer;
+    }
+    
+    .entity-details-section {
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.3s ease;
+    }
+    
+    .entity-details-section.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .property-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .property-row:last-child {
+        border-bottom: none;
+    }
+    
+    .property-key {
+        color: var(--text-tertiary);
+        font-weight: 500;
+    }
+    
+    .property-value {
+        color: var(--text-primary);
+        font-weight: 500;
+        max-width: 60%;
+        text-align: right;
+        word-break: break-word;
+    }
+    
+    .relationship-item {
+        padding: 0.75rem;
+        border-radius: var(--radius-md);
+        margin-bottom: 0.5rem;
+        background-color: var(--bg-elevated);
+        transition: all var(--transition);
+    }
+    
+    .relationship-item:hover {
+        background-color: var(--bg-highlight);
+    }
+    
+    .relationship-type {
+        font-size: 0.75rem;
+        color: var(--accent-light);
+        margin-bottom: 0.25rem;
+    }
+    
+    .relationship-entity {
+        font-weight: 500;
+    }
+    
+    .stats-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background-color: var(--bg-elevated);
+        border-radius: var(--radius-lg);
+        transition: all var(--transition);
+    }
+    
+    .stats-item:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .stats-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-label {
+        color: var(--text-tertiary);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section style="padding: 2rem 0;">
+	<h1 style="margin-bottom: 0.5rem;">
+		<i class="bi bi-search" style="color: var(--accent);"></i>
+		<span>Explore Space Ontology</span>
+	</h1>
+	<p style="color: var(--text-secondary); margin-bottom: 2rem;">Navigate through
+		classes, instances, and relationships in the space ontology</p>
+
+	<div class="search-container">
+		<i class="bi bi-search search-icon"></i>
+		<input type="text" id="search-input" class="search-input"
+			placeholder="Search entities...">
+		<div id="search-results" class="search-results" style="display: none;"></div>
+	</div>
+
+	<div class="grid grid-3" style="grid-template-columns: 1fr 2fr;">
+		<div>
+			<div class="card slide-up"
+				style="animation-delay: 0.1s; margin-bottom: 1.5rem;">
+				<div class="card-header">
+					<h2 class="card-header-title">
+						<i class="bi bi-diagram-2"></i>
+						<span>Classes</span>
+					</h2>
+				</div>
+				<div class="classes-container" id="classes-list">
+					<div
+						style="display: flex; align-items: center; justify-content: center; height: 200px;">
+						<div style="text-align: center;">
+							<div class="spinner"></div>
+							<p style="color: var(--text-tertiary); margin-top: 1rem;">Loading
+								classes...</p>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card slide-up" style="animation-delay: 0.2s;">
+				<div class="card-header">
+					<h2 class="card-header-title">
+						<i class="bi bi-bar-chart"></i>
+						<span>Statistics</span>
+					</h2>
+				</div>
+				<div class="card-body" id="statistics-container">
+					<div
+						style="display: flex; align-items: center; justify-content: center; height: 150px;">
+						<div style="text-align: center;">
+							<div class="spinner"></div>
+							<p style="color: var(--text-tertiary); margin-top: 1rem;">Loading
+								statistics...</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div>
+			<div class="card slide-up"
+				style="animation-delay: 0.3s; margin-bottom: 1.5rem;">
+				<div class="card-header">
+					<h2 class="card-header-title">
+						<i class="bi bi-collection"></i>
+						<span>Instances</span>
+					</h2>
+				</div>
+				<div class="card-body" id="instances-container">
+					<div
+						style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
+						<i class="bi bi-arrow-left-circle"
+							style="font-size: 3rem; color: var(--text-tertiary); margin-bottom: 1rem;"></i>
+						<p style="color: var(--text-tertiary);">Select a class to view its
+							instances</p>
+					</div>
+				</div>
+			</div>
+
+			<div class="card slide-up entity-details-section" id="entity-details-section"
+				style="animation-delay: 0.4s;">
+				<div class="card-header">
+					<h2 class="card-header-title">
+						<i class="bi bi-info-circle"></i>
+						<span>Entity Details</span>
+					</h2>
+				</div>
+				<div class="card-body" id="entity-details">
+					<div
+						style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
+						<i class="bi bi-arrow-left-circle"
+							style="font-size: 3rem; color: var(--text-tertiary); margin-bottom: 1rem;"></i>
+						<p style="color: var(--text-tertiary);">Select an instance to view its
+							details</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/api/classes')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load classes');
+                }
+                return response.json();
+            })
+            .then(classes => {
+                const classesList = document.getElementById('classes-list');
+                classesList.innerHTML = '';
+                
+                if (classes.length === 0) {
+                    classesList.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
+                            <p style="color: var(--text-tertiary);">No classes found</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const listGroup = document.createElement('div');
+                listGroup.className = 'list-group';
+                
+                classes.forEach(cls => {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item';
+                    item.textContent = cls.label || cls.uri.split('#').pop();
+                    item.dataset.uri = cls.uri;
+                    
+                    item.addEventListener('click', function() {
+                        document.querySelectorAll('.list-group-item').forEach(el => {
+                            el.classList.remove('active');
+                        });
+                        this.classList.add('active');
+                        loadInstances(cls.uri);
+                    });
+                    
+                    listGroup.appendChild(item);
+                });
+                
+                classesList.appendChild(listGroup);
+            })
+            .catch(error => {
+                document.getElementById('classes-list').innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                        <p style="color: var(--danger);">Error loading classes</p>
+                    </div>
+                `;
+                console.error('Error loading classes:', error);
+            });
+        
+        fetch('/api/statistics')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load statistics');
+                }
+                return response.json();
+            })
+            .then(stats => {
+                const statsContainer = document.getElementById('statistics-container');
+                statsContainer.innerHTML = '';
+                
+                const triplesStats = document.createElement('div');
+                triplesStats.className = 'stats-item';
+                triplesStats.innerHTML = `
+                    <div class="stats-value">${stats.total_triples}</div>
+                    <div class="stats-label">Total Triples</div>
+                `;
+                
+                statsContainer.appendChild(triplesStats);
+                
+                if (stats.classes && Object.keys(stats.classes).length > 0) {
+                    const classStats = document.createElement('div');
+                    classStats.style.marginTop = '1.5rem';
+                    
+                    classStats.innerHTML = '<h3 style="font-size: 1rem; margin-bottom: 1rem;">Instances by Class</h3>';
+                    
+                    const classItems = document.createElement('div');
+                    classItems.style.display = 'flex';
+                    classItems.style.flexDirection = 'column';
+                    classItems.style.gap = '0.75rem';
+                    
+                    Object.entries(stats.classes).forEach(([className, count]) => {
+                        const item = document.createElement('div');
+                        item.style.display = 'flex';
+                        item.style.flexDirection = 'column';
+                        item.style.gap = '0.25rem';
+                        
+                        const header = document.createElement('div');
+                        header.style.display = 'flex';
+                        header.style.justifyContent = 'space-between';
+                        header.style.alignItems = 'center';
+                        
+                        const name = document.createElement('span');
+                        name.style.color = 'var(--text-secondary)';
+                        name.style.fontSize = '0.875rem';
+                        name.textContent = className;
+                        
+                        const countBadge = document.createElement('span');
+                        countBadge.className = 'badge badge-primary';
+                        countBadge.textContent = count;
+                        
+                        header.appendChild(name);
+                        header.appendChild(countBadge);
+                        
+                        const progress = document.createElement('div');
+                        progress.style.height = '4px';
+                        progress.style.width = '100%';
+                        progress.style.backgroundColor = 'var(--bg-elevated)';
+                        progress.style.borderRadius = '2px';
+                        progress.style.overflow = 'hidden';
+                        
+                        const progressBar = document.createElement('div');
+                        progressBar.style.height = '100%';
+                        progressBar.style.width = `${Math.min(count / 5, 100)}%`;
+                        progressBar.style.backgroundColor = 'var(--accent)';
+                        
+                        progress.appendChild(progressBar);
+                        
+                        item.appendChild(header);
+                        item.appendChild(progress);
+                        
+                        classItems.appendChild(item);
+                    });
+                    
+                    classStats.appendChild(classItems);
+                    statsContainer.appendChild(classStats);
+                }
+            })
+            .catch(error => {
+                document.getElementById('statistics-container').innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 150px;">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                        <p style="color: var(--danger);">Error loading statistics</p>
+                    </div>
+                `;
+                console.error('Error loading statistics:', error);
+            });
+        
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        
+        searchInput.addEventListener('input', function() {
+            const term = this.value.trim();
+            
+            if (term.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            fetch(`/api/search?term=${encodeURIComponent(term)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Search failed');
+                    }
+                    return response.json();
+                })
+                .then(results => {
+                    searchResults.innerHTML = '';
+                    
+                    if (results.length === 0) {
+                        searchResults.innerHTML = `
+                            <div class="search-result-item">
+                                <p style="color: var(--text-tertiary); text-align: center;">No results found</p>
+                            </div>
+                        `;
+                    } else {
+                        results.forEach(result => {
+                            const item = document.createElement('div');
+                            item.className = 'search-result-item';
+                            item.innerHTML = `
+                                <div class="search-result-title">${result.name}</div>
+                                <div class="search-result-subtitle">${result.type}</div>
+                            `;
+                            
+                            item.addEventListener('click', function() {
+                                loadEntityDetails(result.uri);
+                                searchResults.style.display = 'none';
+                                searchInput.value = result.name;
+                            });
+                            
+                            searchResults.appendChild(item);
+                        });
+                    }
+                    
+                    searchResults.style.display = 'block';
+                })
+                .catch(error => {
+                    searchResults.innerHTML = `
+                        <div class="search-result-item">
+                            <p style="color: var(--danger); text-align: center;">Error: ${error.message}</p>
+                        </div>
+                    `;
+                    searchResults.style.display = 'block';
+                    console.error('Search error:', error);
+                });
+        });
+        
+        document.addEventListener('click', function(event) {
+            if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+        
+        function loadInstances(classUri) {
+            const instancesContainer = document.getElementById('instances-container');
+            
+            instancesContainer.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 200px;">
+                    <div style="text-align: center;">
+                        <div class="spinner"></div>
+                        <p style="color: var(--text-tertiary); margin-top: 1rem;">Loading instances...</p>
+                    </div>
+                </div>
+            `;
+            
+            fetch(`/api/instances?class=${encodeURIComponent(classUri)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load instances');
+                    }
+                    return response.json();
+                })
+                .then(instances => {
+                    instancesContainer.innerHTML = '';
+                    
+                    if (instances.length === 0) {
+                        instancesContainer.innerHTML = `
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
+                                <p style="color: var(--text-tertiary);">No instances found for this class</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    const entityGrid = document.createElement('div');
+                    entityGrid.className = 'entity-grid';
+                    
+                    instances.forEach(instance => {
+                        const card = document.createElement('div');
+                        card.className = 'entity-card';
+                        
+                        const icon = document.createElement('div');
+                        icon.className = 'entity-icon';
+                        icon.innerHTML = '<i class="bi bi-box"></i>';
+                        
+                        const name = document.createElement('div');
+                        name.className = 'entity-name';
+                        name.textContent = instance.label || instance.uri.split('#').pop();
+                        
+                        card.appendChild(icon);
+                        card.appendChild(name);
+                        
+                        card.addEventListener('click', function() {
+                            loadEntityDetails(instance.uri);
+                        });
+                        
+                        entityGrid.appendChild(card);
+                    });
+                    
+                    instancesContainer.appendChild(entityGrid);
+                })
+                .catch(error => {
+                    instancesContainer.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 2rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                            <p style="color: var(--danger);">Error loading instances: ${error.message}</p>
+                        </div>
+                    `;
+                    console.error('Error loading instances:', error);
+                });
+        }
+        
+        function loadEntityDetails(uri) {
+            const detailsSection = document.getElementById('entity-details-section');
+            const detailsContainer = document.getElementById('entity-details');
+            
+            detailsContainer.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 200px;">
+                    <div style="text-align: center;">
+                        <div class="spinner"></div>
+                        <p style="color: var(--text-tertiary); margin-top: 1rem;">Loading entity details...</p>
+                    </div>
+                </div>
+            `;
+            
+            detailsSection.classList.add('visible');
+            
+            fetch(`/api/entity?uri=${encodeURIComponent(uri)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load entity details');
+                    }
+                    return response.json();
+                })
+                .then(entity => {
+                    detailsContainer.innerHTML = '';
+                    
+                    const header = document.createElement('div');
+                    header.style.marginBottom = '2rem';
+                    header.style.textAlign = 'center';
+                    
+                    const title = document.createElement('h2');
+                    title.style.fontSize = '1.75rem';
+                    title.style.marginBottom = '0.5rem';
+                    title.style.background = 'linear-gradient(to right, var(--accent-light), var(--accent))';
+                    title.style.webkitBackgroundClip = 'text';
+                    title.style.backgroundClip = 'text';
+                    title.style.color = 'transparent';
+                    title.textContent = entity.label;
+                    
+                    const typeBadge = document.createElement('span');
+                    typeBadge.className = 'badge badge-primary';
+                    typeBadge.style.marginBottom = '0.75rem';
+                    typeBadge.textContent = entity.type;
+                    
+                    const uri = document.createElement('div');
+                    uri.style.fontSize = '0.75rem';
+                    uri.style.color = 'var(--text-tertiary)';
+                    uri.textContent = entity.uri;
+                    
+                    header.appendChild(title);
+                    header.appendChild(typeBadge);
+                    header.appendChild(uri);
+                    
+                    detailsContainer.appendChild(header);
+                    
+                    const tabsContainer = document.createElement('div');
+                    tabsContainer.style.marginBottom = '1.5rem';
+                    tabsContainer.style.display = 'flex';
+                    tabsContainer.style.borderBottom = '1px solid var(--border)';
+                    
+                    const propertiesTab = document.createElement('div');
+                    propertiesTab.style.padding = '0.75rem 1.5rem';
+                    propertiesTab.style.fontWeight = '500';
+                    propertiesTab.style.cursor = 'pointer';
+                    propertiesTab.style.borderBottom = '2px solid var(--accent)';
+                    propertiesTab.style.color = 'var(--text-primary)';
+                    propertiesTab.textContent = 'Properties';
+                    propertiesTab.dataset.tab = 'properties';
+                    propertiesTab.className = 'active-tab';
+                    
+                    const relationshipsTab = document.createElement('div');
+                    relationshipsTab.style.padding = '0.75rem 1.5rem';
+                    relationshipsTab.style.fontWeight = '500';
+                    relationshipsTab.style.cursor = 'pointer';
+                    relationshipsTab.style.color = 'var(--text-tertiary)';
+                    relationshipsTab.textContent = 'Relationships';
+                    relationshipsTab.dataset.tab = 'relationships';
+                    
+                    tabsContainer.appendChild(propertiesTab);
+                    tabsContainer.appendChild(relationshipsTab);
+                    
+                    detailsContainer.appendChild(tabsContainer);
+                    
+                    const propertiesContent = document.createElement('div');
+                    propertiesContent.id = 'properties-content';
+                    propertiesContent.style.display = 'block';
+                    
+                    const relationshipsContent = document.createElement('div');
+                    relationshipsContent.id = 'relationships-content';
+                    relationshipsContent.style.display = 'none';
+                    
+                    if (entity.properties && entity.properties.length > 0) {
+                        entity.properties.forEach(prop => {
+                            const row = document.createElement('div');
+                            row.className = 'property-row';
+                            
+                            const key = document.createElement('div');
+                            key.className = 'property-key';
+                            key.textContent = prop.property;
+                            
+                            const value = document.createElement('div');
+                            value.className = 'property-value';
+                            value.textContent = prop.value;
+                            
+                            row.appendChild(key);
+                            row.appendChild(value);
+                            
+                            propertiesContent.appendChild(row);
+                        });
+                    } else {
+                        propertiesContent.innerHTML = `
+                            <div style="text-align: center; padding: 2rem 0;">
+                                <p style="color: var(--text-tertiary);">No properties found</p>
+                            </div>
+                        `;
+                    }
+                    
+                    if (entity.relationships && entity.relationships.length > 0) {
+                        const outgoing = entity.relationships.filter(r => r.direction === 'outgoing');
+                        if (outgoing.length > 0) {
+                            const outgoingSection = document.createElement('div');
+                            outgoingSection.style.marginBottom = '2rem';
+                            
+                            const outgoingTitle = document.createElement('h3');
+                            outgoingTitle.style.fontSize = '1rem';
+                            outgoingTitle.style.marginBottom = '1rem';
+                            outgoingTitle.style.color = 'var(--accent-light)';
+                            outgoingTitle.textContent = 'Outgoing Relationships';
+                            
+                            outgoingSection.appendChild(outgoingTitle);
+                            
+                            outgoing.forEach(rel => {
+                                const item = document.createElement('div');
+                                item.className = 'relationship-item';
+                                
+                                const type = document.createElement('div');
+                                type.className = 'relationship-type';
+                                type.textContent = rel.type;
+                                
+                                const entity = document.createElement('div');
+                                entity.className = 'relationship-entity';
+                                entity.textContent = rel.target_label;
+                                entity.style.cursor = 'pointer';
+                                entity.dataset.uri = rel.target_uri;
+                                
+                                entity.addEventListener('click', function() {
+                                    loadEntityDetails(this.dataset.uri);
+                                });
+                                
+                                item.appendChild(type);
+                                item.appendChild(entity);
+                                
+                                outgoingSection.appendChild(item);
+                            });
+                            
+                            relationshipsContent.appendChild(outgoingSection);
+                        }
+                        
+                        const incoming = entity.relationships.filter(r => r.direction === 'incoming');
+                        if (incoming.length > 0) {
+                            const incomingSection = document.createElement('div');
+                            
+                            const incomingTitle = document.createElement('h3');
+                            incomingTitle.style.fontSize = '1rem';
+                            incomingTitle.style.marginBottom = '1rem';
+                            incomingTitle.style.color = 'var(--accent-light)';
+                            incomingTitle.textContent = 'Incoming Relationships';
+                            
+                            incomingSection.appendChild(incomingTitle);
+                            
+                            incoming.forEach(rel => {
+                                const item = document.createElement('div');
+                                item.className = 'relationship-item';
+                                
+                                const type = document.createElement('div');
+                                type.className = 'relationship-type';
+                                type.textContent = rel.type;
+                                
+                                const entity = document.createElement('div');
+                                entity.className = 'relationship-entity';
+                                entity.textContent = rel.source_label;
+                                entity.style.cursor = 'pointer';
+                                entity.dataset.uri = rel.source_uri;
+                                
+                                entity.addEventListener('click', function() {
+                                    loadEntityDetails(this.dataset.uri);
+                                });
+                                
+                                item.appendChild(type);
+                                item.appendChild(entity);
+                                
+                                incomingSection.appendChild(item);
+                            });
+                            
+                            relationshipsContent.appendChild(incomingSection);
+                        }
+                    } else {
+                        relationshipsContent.innerHTML = `
+                            <div style="text-align: center; padding: 2rem 0;">
+                                <p style="color: var(--text-tertiary);">No relationships found</p>
+                            </div>
+                        `;
+                    }
+                    
+                    detailsContainer.appendChild(propertiesContent);
+                    detailsContainer.appendChild(relationshipsContent);
+                    
+                    propertiesTab.addEventListener('click', function() {
+                        document.querySelectorAll('[data-tab]').forEach(tab => {
+                            tab.style.borderBottom = 'none';
+                            tab.style.color = 'var(--text-tertiary)';
+                        });
+                        this.style.borderBottom = '2px solid var(--accent)';
+                        this.style.color = 'var(--text-primary)';
+                        
+                        document.getElementById('properties-content').style.display = 'block';
+                        document.getElementById('relationships-content').style.display = 'none';
+                    });
+                    
+                    relationshipsTab.addEventListener('click', function() {
+                        document.querySelectorAll('[data-tab]').forEach(tab => {
+                            tab.style.borderBottom = 'none';
+                            tab.style.color = 'var(--text-tertiary)';
+                        });
+                        this.style.borderBottom = '2px solid var(--accent)';
+                        this.style.color = 'var(--text-primary)';
+                        
+                        document.getElementById('properties-content').style.display = 'none';
+                        document.getElementById('relationships-content').style.display = 'block';
+                    });
+                })
+                .catch(error => {
+                    detailsContainer.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
+                            <i class="bi bi-exclamation-triangle" style="font-size: 2rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                            <p style="color: var(--danger);">Error loading entity details: ${error.message}</p>
+                        </div>
+                    `;
+                    console.error('Error loading entity details:', error);
+                });
+        }
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const entityUri = urlParams.get('uri');
+        if (entityUri) {
+            loadEntityDetails(entityUri);
+        }
+    });
+</script>
+{% endblock %}

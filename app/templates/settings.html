@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Space Ontology{% endblock %}
+
+{% block content %}
+<section style="padding: 2rem 0;">
+	<h1 style="margin-bottom: 0.5rem;">
+		<i class="bi bi-gear" style="color: var(--accent);"></i>
+		<span>Settings</span>
+	</h1>
+	<p style="color: var(--text-secondary); margin-bottom: 2rem;">Configure the
+		Space Ontology application</p>
+
+	<div class="grid grid-2" style="grid-template-columns: 2fr 1fr;">
+		<div>
+			<div class="card slide-up"
+				style="animation-delay: 0.1s; margin-bottom: 1.5rem;">
+				<div class="card-header">
+					<h2 class="card-header-title">
+						<i class="bi bi-database"></i>
+						<span>Persistence Settings</span>
+					</h2>
+				</div>
+				<div class="card-body">
+					<form id="persistence-form">
+						<div style="margin-bottom: 1.5rem;">
+							<label class="form-label">Persistence Method</label>
+							<div style="display: flex; gap: 1rem;">
+								<div style="flex: 1;">
+									<input type="radio" id="file-system" name="persistence_method"
+										value="file" {% if persistence.method == 'file' %}checked{% endif %}>
+									<label for="file-system"
+										style="margin-left: 0.5rem; cursor: pointer;">File System</label>
+								</div>
+								<div style="flex: 1;">
+									<input type="radio" id="graphdb" name="persistence_method"
+										value="graphdb" {% if persistence.method == 'graphdb' %}checked{%
+										endif %}>
+									<label for="graphdb"
+										style="margin-left: 0.5rem; cursor: pointer;">GraphDB</label>
+								</div>
+							</div>
+						</div>
+
+						<div id="graphdb-settings"
+							class="{% if persistence.method != 'graphdb' %}hidden{% endif %}">
+							<div class="form-group">
+								<label for="graphdb-url" class="form-label">GraphDB URL</label>
+								<input type="text" id="graphdb-url" name="graphdb_url"
+									class="form-control"
+									value="{{ persistence.graphdb_url if persistence.graphdb_url else 'http://localhost:7200' }}"
+									placeholder="http://localhost:7200">
+							</div>
+
+							<div class="form-group">
+								<label for="graphdb-repository" class="form-label">Repository
+									Name</label>
+								<input type="text" id="graphdb-repository" name="graphdb_repository"
+									class="form-control"
+									value="{{ persistence.graphdb_repository if persistence.graphdb_repository else 'space-ontology' }}"
+									placeholder="space-ontology">
+							</div>
+						</div>
+
+						<div style="display: flex; justify-content: flex-end;">
+							<button type="submit" class="btn btn-primary">
+								<i class="bi bi-save"></i>
+								<span>Save Settings</span>
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+
+			<div class="card slide-up" style="animation-delay: 0.2s;">
+				<div class="card-header">
+					<h2 class="card-header-title">
+						<i class="bi bi-sliders"></i>
+						<span>Data Settings</span>
+					</h2>
+				</div>
+				<div class="card-body">
+					<div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+						<button id="export-btn" class="btn btn-secondary" style="flex: 1;">
+							<i class="bi bi-download"></i>
+							<span>Export Ontology</span>
+						</button>
+
+						<button id="import-btn" class="btn btn-secondary" style="flex: 1;">
+							<i class="bi bi-upload"></i>
+							<span>Import Ontology</span>
+						</button>
+					</div>
+
+					<div id="import-form" style="display: none; margin-top: 1.5rem;">
+						<form id="upload-form" enctype="multipart/form-data">
+							<div class="form-group">
+								<label for="ontology-file" class="form-label">Select Ontology
+									File</label>
+								<input type="file" id="ontology-file" name="file" class="form-control"
+									accept=".owl,.rdf,.ttl,.n3,.nt,.jsonld">
+							</div>
+
+							<div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+								<button type="button" id="cancel-import" class="btn btn-secondary"
+									style="margin-right: 0.75rem;">
+									<i class="bi bi-x"></i>
+									<span>Cancel</span>
+								</button>
+
+								<button type="submit" class="btn btn-primary">
+									<i class="bi bi-upload"></i>
+									<span>Upload</span>
+								</button>
+							</div>
+						</form>
+					</div>
+
+					<hr style="margin: 1.5rem 0; border-color: var(--border);">
+
+					<div
+						style="display: flex; justify-content: space-between; align-items: center;">
+						<div>
+							<h3 style="font-size: 1rem; margin-bottom: 0.25rem;">Reset Ontology</h3>
+							<p
+								style="color: var(--text-tertiary); font-size: 0.875rem; margin: 0;">This
+								will delete all data in the ontology</p>
+						</div>
+
+						<button id="reset-btn" class="btn btn-danger">
+							<i class="bi bi-trash"></i>
+							<span>Reset</span>
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div>
+			<div class="card slide-up" style="animation-delay: 0.3s;">
+				<div class="card-header">
+					<h2 class="card-header-title">
+						<i class="bi bi-info-circle"></i>
+						<span>System Information</span>
+					</h2>
+				</div>
+				<div class="card-body">
+					<div style="margin-bottom: 1rem;">
+						<div
+							style="color: var(--text-tertiary); font-size: 0.875rem; margin-bottom: 0.25rem;">Current
+							Persistence</div>
+						<div style="font-weight: 500;">{{ persistence.method|capitalize }}</div>
+					</div>
+
+					{% if persistence.method == 'graphdb' %}
+					<div style="margin-bottom: 1rem;">
+						<div
+							style="color: var(--text-tertiary); font-size: 0.875rem; margin-bottom: 0.25rem;">GraphDB
+							URL</div>
+						<div style="font-weight: 500;">{{ persistence.graphdb_url }}</div>
+					</div>
+
+					<div style="margin-bottom: 1rem;">
+						<div
+							style="color: var(--text-tertiary); font-size: 0.875rem; margin-bottom: 0.25rem;">Repository</div>
+						<div style="font-weight: 500;">{{ persistence.graphdb_repository }}</div>
+					</div>
+					{% endif %}
+
+					<div style="margin-bottom: 1rem;">
+						<div
+							style="color: var(--text-tertiary); font-size: 0.875rem; margin-bottom: 0.25rem;">Ontology
+							Size</div>
+						<div style="font-weight: 500;" id="ontology-size">Loading...</div>
+					</div>
+
+					<div>
+						<div
+							style="color: var(--text-tertiary); font-size: 0.875rem; margin-bottom: 0.25rem;">Last
+							Modified</div>
+						<div style="font-weight: 500;" id="last-modified">Loading...</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card slide-up"
+				style="animation-delay: 0.4s; margin-top: 1.5rem;">
+				<div class="card-header">
+					<h2 class="card-header-title">
+						<i class="bi bi-question-circle"></i>
+						<span>Help</span>
+					</h2>
+				</div>
+				<div class="card-body">
+					<div style="margin-bottom: 1rem;">
+						<h3 style="font-size: 1rem; margin-bottom: 0.5rem;">File System
+							Storage</h3>
+						<p style="color: var(--text-tertiary); font-size: 0.875rem;">Stores the
+							ontology in a local file. Simple but not suitable for production.</p>
+					</div>
+
+					<div>
+						<h3 style="font-size: 1rem; margin-bottom: 0.5rem;">GraphDB Storage</h3>
+						<p style="color: var(--text-tertiary); font-size: 0.875rem;">Stores the
+							ontology in a GraphDB instance. Better performance and scalability.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<div id="confirmation-modal"
+	style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center;">
+	<div
+		style="background-color: var(--bg-surface); border-radius: var(--radius-lg); width: 400px; max-width: 90%; padding: 1.5rem; box-shadow: var(--shadow-lg);">
+		<h3 style="margin-bottom: 1rem; font-size: 1.25rem;">Confirm Reset</h3>
+		<p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Are you sure
+			you want to reset the ontology? This action cannot be undone.</p>
+		<div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+			<button id="cancel-reset" class="btn btn-secondary">Cancel</button>
+			<button id="confirm-reset" class="btn btn-danger">Reset</button>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const persistenceMethod = document.querySelectorAll('input[name="persistence_method"]');
+        const graphdbSettings = document.getElementById('graphdb-settings');
+        
+        persistenceMethod.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'graphdb') {
+                    graphdbSettings.style.display = 'block';
+                } else {
+                    graphdbSettings.style.display = 'none';
+                }
+            });
+        });
+        
+        const persistenceForm = document.getElementById('persistence-form');
+        
+        persistenceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                method: formData.get('persistence_method'),
+                graphdb_url: formData.get('graphdb_url'),
+                graphdb_repository: formData.get('graphdb_repository')
+            };
+            
+            fetch('/api/settings/persistence', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to update persistence settings');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success';
+                alert.style.marginBottom = '1rem';
+                alert.innerHTML = '<i class="bi bi-check-circle"></i><span>Settings updated successfully!</span>';
+                
+                persistenceForm.parentNode.insertBefore(alert, persistenceForm);
+                
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }, 3000);
+                
+                fetchSystemInfo();
+            })
+            .catch(error => {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger';
+                alert.style.marginBottom = '1rem';
+                alert.innerHTML = `<i class="bi bi-exclamation-triangle"></i><span>Error: ${error.message}</span>`;
+                
+                persistenceForm.parentNode.insertBefore(alert, persistenceForm);
+                
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }, 5000);
+            });
+        });
+        
+        const importBtn = document.getElementById('import-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const importForm = document.getElementById('import-form');
+        const cancelImport = document.getElementById('cancel-import');
+        const uploadForm = document.getElementById('upload-form');
+        
+        importBtn.addEventListener('click', function() {
+            importForm.style.display = 'block';
+            importBtn.style.display = 'none';
+        });
+        
+        cancelImport.addEventListener('click', function() {
+            importForm.style.display = 'none';
+            importBtn.style.display = 'block';
+        });
+        
+        exportBtn.addEventListener('click', function() {
+            window.location.href = '/api/export-ontology';
+        });
+        
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch('/api/import-ontology', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to import ontology');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success';
+                alert.style.marginBottom = '1rem';
+                alert.innerHTML = '<i class="bi bi-check-circle"></i><span>Ontology imported successfully!</span>';
+                
+                uploadForm.parentNode.insertBefore(alert, uploadForm);
+                
+                importForm.style.display = 'none';
+                importBtn.style.display = 'block';
+                
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }, 3000);
+                
+                fetchSystemInfo();
+            })
+            .catch(error => {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger';
+                alert.style.marginBottom = '1rem';
+                alert.innerHTML = `<i class="bi bi-exclamation-triangle"></i><span>Error: ${error.message}</span>`;
+                
+                uploadForm.parentNode.insertBefore(alert, uploadForm);
+                
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }, 5000);
+            });
+        });
+        
+        const resetBtn = document.getElementById('reset-btn');
+        const confirmationModal = document.getElementById('confirmation-modal');
+        const cancelReset = document.getElementById('cancel-reset');
+        const confirmReset = document.getElementById('confirm-reset');
+        
+        resetBtn.addEventListener('click', function() {
+            confirmationModal.style.display = 'flex';
+        });
+        
+        cancelReset.addEventListener('click', function() {
+            confirmationModal.style.display = 'none';
+        });
+        
+        confirmReset.addEventListener('click', function() {
+            fetch('/api/reset-ontology', {
+                method: 'POST',
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Failed to reset ontology');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                confirmationModal.style.display = 'none';
+                
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success';
+                alert.style.marginBottom = '1rem';
+                alert.innerHTML = '<i class="bi bi-check-circle"></i><span>Ontology reset successfully!</span>';
+                
+                resetBtn.parentNode.parentNode.insertBefore(alert, resetBtn.parentNode);
+                
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }, 3000);
+                
+                fetchSystemInfo();
+            })
+            .catch(error => {
+                confirmationModal.style.display = 'none';
+                
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger';
+                alert.style.marginBottom = '1rem';
+                alert.innerHTML = `<i class="bi bi-exclamation-triangle"></i><span>Error: ${error.message}</span>`;
+                
+                resetBtn.parentNode.parentNode.insertBefore(alert, resetBtn.parentNode);
+                
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }, 5000);
+            });
+        });
+        
+        function fetchSystemInfo() {
+            fetch('/api/system-info')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('ontology-size').textContent = data.size;
+                document.getElementById('last-modified').textContent = data.last_modified;
+            })
+            .catch(error => {
+                document.getElementById('ontology-size').textContent = 'Error loading';
+                document.getElementById('last-modified').textContent = 'Error loading';
+            });
+        }
+        
+        fetchSystemInfo();
+    });
+</script>
+{% endblock %}
