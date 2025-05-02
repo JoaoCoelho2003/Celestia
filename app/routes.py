@@ -1,17 +1,21 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_file
 from app.ontology.creator import OntologyCreator
 from app.ontology.queries import OntologyQueries
 import os
 import json
 from rdflib import URIRef
 from rdflib.namespace import RDF
+from datetime import datetime
+import shutil
+from werkzeug.utils import secure_filename
 
 main = Blueprint('main', __name__)
 
 
 persistence_config = {
     "method": "file",  
-    "graphdb_url": "http://localhost:7200/repositories/space"
+    "graphdb_url": "http://localhost:7200/repositories/space",
+    "graphdb_repository": "space-ontology"
 }
 
 @main.route('/')
@@ -190,5 +194,148 @@ def get_graph_data():
         queries = OntologyQueries(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
         graph_data = queries.get_graph_data()
         return jsonify(graph_data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/settings/persistence', methods=['POST'])
+def update_persistence():
+    try:
+        global persistence_config
+        data = request.json
+        
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        persistence_config["method"] = data.get("method", "file")
+        
+        if persistence_config["method"] == "graphdb":
+            persistence_config["graphdb_url"] = data.get("graphdb_url", "http://localhost:7200")
+            persistence_config["graphdb_repository"] = data.get("graphdb_repository", "space-ontology")
+        
+        return jsonify({
+            "status": "success", 
+            "message": "Persistence settings updated successfully",
+            "persistence": persistence_config
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/export-ontology')
+def export_ontology():
+    try:
+        use_graphdb = persistence_config["method"] == "graphdb"
+        graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
+        
+        if use_graphdb:
+            queries = OntologyQueries(use_graphdb=True, graphdb_url=graphdb_url)
+            temp_file = "temp_export.ttl"
+            queries.g.serialize(destination=temp_file, format="turtle")
+            return send_file(temp_file, as_attachment=True, download_name="space_ontology.ttl", mimetype="text/turtle")
+        else:
+            if not os.path.exists('ontology/space.ttl'):
+                return jsonify({"error": "Ontology file not found. Please create the ontology first."}), 404
+            return send_file('../ontology/space.ttl', as_attachment=True, download_name="space_ontology.ttl", mimetype="text/turtle")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/import-ontology', methods=['POST'])
+def import_ontology():
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file part"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
+        
+        if file:
+            filename = secure_filename(file.filename)
+            temp_path = os.path.join('temp', filename)
+            
+            
+            os.makedirs('temp', exist_ok=True)
+            
+            file.save(temp_path)
+            
+            use_graphdb = persistence_config["method"] == "graphdb"
+            graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
+            
+            if use_graphdb:
+                
+                queries = OntologyQueries(use_graphdb=True, graphdb_url=graphdb_url)
+                queries.g.parse(temp_path, format="turtle")
+                queries.save_to_graphdb()
+            else:
+                
+                os.makedirs('ontology', exist_ok=True)
+                shutil.copy(temp_path, 'ontology/space.ttl')
+            
+            
+            os.remove(temp_path)
+            
+            return jsonify({
+                "status": "success", 
+                "message": "Ontology imported successfully"
+            })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/reset-ontology', methods=['POST'])
+def reset_ontology():
+    try:
+        use_graphdb = persistence_config["method"] == "graphdb"
+        graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
+        
+        if use_graphdb:
+            
+            creator = OntologyCreator(use_graphdb=True, graphdb_url=graphdb_url)
+            creator.create_ontology_structure()  
+            creator.save_ontology()
+        else:
+            
+            if os.path.exists('ontology/space.ttl'):
+                os.remove('ontology/space.ttl')
+            
+            
+            creator = OntologyCreator(use_graphdb=False)
+            creator.create_ontology_structure()  
+            creator.save_ontology()
+        
+        return jsonify({
+            "status": "success", 
+            "message": "Ontology reset successfully"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@main.route('/api/system-info')
+def get_system_info():
+    try:
+        use_graphdb = persistence_config["method"] == "graphdb"
+        
+        if use_graphdb:
+            
+            size = "N/A (GraphDB)"
+            last_modified = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            
+            if os.path.exists('ontology/space.ttl'):
+                size_bytes = os.path.getsize('ontology/space.ttl')
+                if size_bytes < 1024:
+                    size = f"{size_bytes} bytes"
+                elif size_bytes < 1024 * 1024:
+                    size = f"{size_bytes / 1024:.2f} KB"
+                else:
+                    size = f"{size_bytes / (1024 * 1024):.2f} MB"
+                
+                last_modified = datetime.fromtimestamp(os.path.getmtime('ontology/space.ttl')).strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                size = "0 bytes"
+                last_modified = "N/A"
+        
+        return jsonify({
+            "size": size,
+            "last_modified": last_modified
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500

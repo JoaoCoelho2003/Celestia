@@ -1,22 +1,25 @@
 import os
-import json
 import requests
+from datetime import datetime
 from rdflib import Graph, Namespace, Literal, URIRef, BNode
 from rdflib.namespace import RDF, RDFS, XSD, OWL
 
 class OntologyCreator:
-    def __init__(self, output_path="ontology/space.ttl"):
+    def __init__(self, output_path="ontology/space.ttl", use_graphdb=False, graphdb_url="http://localhost:7200/repositories/space"):
         self.output_path = output_path
+        self.use_graphdb = use_graphdb
+        self.graphdb_url = graphdb_url
         self.g = Graph()
         
         
-        self.SPACE = Namespace("http://www.semanticweb.org/ontologies/space")
+        self.SPACE = Namespace("http://www.semanticweb.org/ontologies/space#")
         self.g.bind("space", self.SPACE)
         self.g.bind("owl", OWL)
         self.g.bind("rdfs", RDFS)
         
         
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        if not use_graphdb:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
     def create_ontology_structure(self):
         """Create the basic structure of the space ontology"""
@@ -170,15 +173,35 @@ class OntologyCreator:
                 sun_uri = self.SPACE.Sun
                 self.g.add((sun_uri, RDF.type, self.SPACE.Star))
                 self.g.add((sun_uri, self.SPACE.name, Literal("Sun", datatype=XSD.string)))
-                self.g.add((sun_uri, self.SPACE.mass, Literal(1.989e30, datatype=XSD.decimal)))
-                self.g.add((sun_uri, self.SPACE.radius, Literal(696340, datatype=XSD.decimal)))
-                self.g.add((sun_uri, self.SPACE.description, Literal("The Sun is the star at the center of the Solar System.", datatype=XSD.string)))
+                
+                
+                sun_response = requests.get("https://api.le-systeme-solaire.net/rest/bodies/soleil")
+                if sun_response.status_code == 200:
+                    sun_data = sun_response.json()
+                    if sun_data.get('mass'):
+                        mass_value = sun_data['mass'].get('massValue', 0)
+                        mass_exp = sun_data['mass'].get('massExponent', 0)
+                        mass = mass_value * (10 ** mass_exp)
+                        self.g.add((sun_uri, self.SPACE.mass, Literal(mass, datatype=XSD.decimal)))
+                    
+                    if sun_data.get('meanRadius'):
+                        self.g.add((sun_uri, self.SPACE.radius, Literal(sun_data['meanRadius'], datatype=XSD.decimal)))
+                    
+                    
+                    wiki_response = requests.get("https://en.wikipedia.org/api/rest_v1/page/summary/Sun")
+                    if wiki_response.status_code == 200:
+                        wiki_data = wiki_response.json()
+                        self.g.add((sun_uri, self.SPACE.description, Literal(wiki_data.get('extract', "The Sun is the star at the center of the Solar System."), datatype=XSD.string)))
                 
                 
                 milky_way_uri = self.SPACE.MilkyWay
                 self.g.add((milky_way_uri, RDF.type, self.SPACE.Galaxy))
                 self.g.add((milky_way_uri, self.SPACE.name, Literal("Milky Way", datatype=XSD.string)))
-                self.g.add((milky_way_uri, self.SPACE.description, Literal("The Milky Way is the galaxy that contains our Solar System.", datatype=XSD.string)))
+                
+                wiki_response = requests.get("https://en.wikipedia.org/api/rest_v1/page/summary/Milky_Way")
+                if wiki_response.status_code == 200:
+                    wiki_data = wiki_response.json()
+                    self.g.add((milky_way_uri, self.SPACE.description, Literal(wiki_data.get('extract', "The Milky Way is the galaxy that contains our Solar System."), datatype=XSD.string)))
                 
                 
                 self.g.add((sun_uri, self.SPACE.belongsTo, milky_way_uri))
@@ -212,8 +235,10 @@ class OntologyCreator:
                         self.g.add((planet_uri, self.SPACE.belongsTo, milky_way_uri))
                         
                         
-                        description = f"{body['englishName']} is a planet in our Solar System."
-                        self.g.add((planet_uri, self.SPACE.description, Literal(description, datatype=XSD.string)))
+                        wiki_response = requests.get(f"https://en.wikipedia.org/api/rest_v1/page/summary/{body['englishName']}")
+                        if wiki_response.status_code == 200:
+                            wiki_data = wiki_response.json()
+                            self.g.add((planet_uri, self.SPACE.description, Literal(wiki_data.get('extract', f"{body['englishName']} is a planet in our Solar System."), datatype=XSD.string)))
                 
                 
                 for body in data['bodies']:
@@ -251,8 +276,14 @@ class OntologyCreator:
                             self.g.add((moon_uri, self.SPACE.belongsTo, milky_way_uri))
                             
                             
-                            description = f"{body['englishName']} is a moon of {list(self.g.objects(planet_uri, self.SPACE.name))[0].value}."
-                            self.g.add((moon_uri, self.SPACE.description, Literal(description, datatype=XSD.string)))
+                            try:
+                                wiki_response = requests.get(f"https://en.wikipedia.org/api/rest_v1/page/summary/{body['englishName']}")
+                                if wiki_response.status_code == 200:
+                                    wiki_data = wiki_response.json()
+                                    self.g.add((moon_uri, self.SPACE.description, Literal(wiki_data.get('extract', f"{body['englishName']} is a moon of {list(self.g.objects(planet_uri, self.SPACE.name))[0].value}."), datatype=XSD.string)))
+                            except:
+                                
+                                self.g.add((moon_uri, self.SPACE.description, Literal(f"{body['englishName']} is a moon of {list(self.g.objects(planet_uri, self.SPACE.name))[0].value}.", datatype=XSD.string)))
                 
                 print(f"Added data for the Solar System with {len([s for s, p, o in self.g.triples((None, RDF.type, self.SPACE.Planet))])} planets and {len([s for s, p, o in self.g.triples((None, RDF.type, self.SPACE.Moon))])} moons.")
             else:
@@ -272,7 +303,12 @@ class OntologyCreator:
                 spacex_uri = self.SPACE.SpaceX
                 self.g.add((spacex_uri, RDF.type, self.SPACE.SpaceAgency))
                 self.g.add((spacex_uri, self.SPACE.name, Literal("SpaceX", datatype=XSD.string)))
-                self.g.add((spacex_uri, self.SPACE.description, Literal("Space Exploration Technologies Corp. is an American spacecraft manufacturer, space launch provider, and satellite communications company.", datatype=XSD.string)))
+                
+                
+                company_response = requests.get("https://api.spacexdata.com/v4/company")
+                if company_response.status_code == 200:
+                    company_data = company_response.json()
+                    self.g.add((spacex_uri, self.SPACE.description, Literal(company_data.get('summary', "Space Exploration Technologies Corp. is an American spacecraft manufacturer, space launch provider, and satellite communications company."), datatype=XSD.string)))
                 
                 
                 for launch in launches[:20]:
@@ -309,6 +345,25 @@ class OntologyCreator:
                             
                             
                             self.g.add((mission_uri, self.SPACE.usesSpacecraft, rocket_uri))
+                    
+                    
+                    if launch.get('crew') and len(launch['crew']) > 0:
+                        for crew_id in launch['crew']:
+                            
+                            crew_response = requests.get(f"https://api.spacexdata.com/v4/crew/{crew_id}")
+                            if crew_response.status_code == 200:
+                                crew_data = crew_response.json()
+                                astronaut_uri = self.SPACE[f"Astronaut_{crew_data['id']}"]
+                                
+                                
+                                if (astronaut_uri, RDF.type, self.SPACE.Astronaut) not in self.g:
+                                    self.g.add((astronaut_uri, RDF.type, self.SPACE.Astronaut))
+                                    self.g.add((astronaut_uri, self.SPACE.name, Literal(crew_data['name'], datatype=XSD.string)))
+                                    self.g.add((astronaut_uri, self.SPACE.description, Literal(f"{crew_data['name']} is an astronaut who has flown on SpaceX missions.", datatype=XSD.string)))
+                                
+                                
+                                self.g.add((astronaut_uri, self.SPACE.participatedIn, mission_uri))
+                                self.g.add((mission_uri, self.SPACE.hasAstronaut, astronaut_uri))
                 
                 print(f"Added data for {len(launches[:20])} SpaceX missions.")
             else:
@@ -317,99 +372,201 @@ class OntologyCreator:
             print(f"Error fetching SpaceX data: {e}")
     
     def fetch_nasa_data(self):
-        """Fetch data about NASA astronauts and missions"""
+        """Fetch data about NASA from NASA APIs"""
         try:
             
             nasa_uri = self.SPACE.NASA
             self.g.add((nasa_uri, RDF.type, self.SPACE.SpaceAgency))
             self.g.add((nasa_uri, self.SPACE.name, Literal("NASA", datatype=XSD.string)))
-            self.g.add((nasa_uri, self.SPACE.description, Literal("The National Aeronautics and Space Administration is an independent agency of the U.S. federal government responsible for the civil space program, aeronautics research, and space research.", datatype=XSD.string)))
             
             
-            missions = [
-                {
-                    "id": "Apollo11",
-                    "name": "Apollo 11",
-                    "launch_date": "1969-07-16",
-                    "end_date": "1969-07-24",
-                    "description": "The first crewed mission to land on the Moon.",
-                    "spacecraft": "Saturn V",
-                    "astronauts": ["Neil Armstrong", "Buzz Aldrin", "Michael Collins"]
-                },
-                {
-                    "id": "Voyager1",
-                    "name": "Voyager 1",
-                    "launch_date": "1977-09-05",
-                    "description": "An interstellar mission to study the outer Solar System and beyond.",
-                    "spacecraft": "Voyager 1 Spacecraft"
-                },
-                {
-                    "id": "Hubble",
-                    "name": "Hubble Space Telescope",
-                    "launch_date": "1990-04-24",
-                    "description": "A space telescope that has made numerous important observations since its launch.",
-                    "spacecraft": "Space Shuttle Discovery"
-                },
-                {
-                    "id": "Curiosity",
-                    "name": "Mars Science Laboratory (Curiosity)",
-                    "launch_date": "2011-11-26",
-                    "description": "A mission to land and operate a rover named Curiosity on the surface of Mars.",
-                    "spacecraft": "Atlas V"
-                },
-                {
-                    "id": "JamesWebb",
-                    "name": "James Webb Space Telescope",
-                    "launch_date": "2021-12-25",
-                    "description": "An infrared space telescope designed to be the successor to the Hubble Space Telescope.",
-                    "spacecraft": "Ariane 5"
-                }
-            ]
+            wiki_response = requests.get("https://en.wikipedia.org/api/rest_v1/page/summary/NASA")
+            if wiki_response.status_code == 200:
+                wiki_data = wiki_response.json()
+                self.g.add((nasa_uri, self.SPACE.description, Literal(wiki_data.get('extract', "The National Aeronautics and Space Administration is an independent agency of the U.S. federal government responsible for the civil space program, aeronautics research, and space research."), datatype=XSD.string)))
             
-            for mission in missions:
-                mission_uri = self.SPACE[mission["id"]]
-                self.g.add((mission_uri, RDF.type, self.SPACE.SpaceMission))
-                self.g.add((mission_uri, self.SPACE.name, Literal(mission["name"], datatype=XSD.string)))
-                self.g.add((mission_uri, self.SPACE.launchDate, Literal(mission["launch_date"], datatype=XSD.date)))
-                
-                if mission.get("end_date"):
-                    self.g.add((mission_uri, self.SPACE.endDate, Literal(mission["end_date"], datatype=XSD.date)))
-                
-                self.g.add((mission_uri, self.SPACE.description, Literal(mission["description"], datatype=XSD.string)))
-                self.g.add((mission_uri, self.SPACE.launchedBy, nasa_uri))
+            
+            nasa_api_url = "https://images-api.nasa.gov/search?q=mission&media_type=image"
+            response = requests.get(nasa_api_url)
+            
+            if response.status_code == 200:
+                data = response.json()
+                missions_added = 0
                 
                 
-                spacecraft_uri = self.SPACE[f"Spacecraft_{mission['id']}"]
-                self.g.add((spacecraft_uri, RDF.type, self.SPACE.Spacecraft))
-                self.g.add((spacecraft_uri, self.SPACE.name, Literal(mission["spacecraft"], datatype=XSD.string)))
-                self.g.add((mission_uri, self.SPACE.usesSpacecraft, spacecraft_uri))
-                
-                
-                if mission.get("astronauts"):
-                    for astronaut_name in mission["astronauts"]:
-                        astronaut_id = astronaut_name.replace(" ", "")
-                        astronaut_uri = self.SPACE[astronaut_id]
+                for item in data.get('collection', {}).get('items', [])[:10]:
+                    if 'data' in item and len(item['data']) > 0:
+                        mission_data = item['data'][0]
                         
                         
-                        if (astronaut_uri, RDF.type, self.SPACE.Astronaut) not in self.g:
+                        if 'title' not in mission_data:
+                            continue
+                        
+                        mission_id = mission_data['nasa_id'].replace(' ', '_')
+                        mission_uri = self.SPACE[f"NASA_Mission_{mission_id}"]
+                        
+                        
+                        self.g.add((mission_uri, RDF.type, self.SPACE.SpaceMission))
+                        self.g.add((mission_uri, self.SPACE.name, Literal(mission_data['title'], datatype=XSD.string)))
+                        
+                        
+                        if 'description' in mission_data:
+                            self.g.add((mission_uri, self.SPACE.description, Literal(mission_data['description'], datatype=XSD.string)))
+                        
+                        
+                        if 'date_created' in mission_data:
+                            try:
+                                date_obj = datetime.strptime(mission_data['date_created'], "%Y-%m-%dT%H:%M:%SZ")
+                                date_str = date_obj.strftime("%Y-%m-%d")
+                                self.g.add((mission_uri, self.SPACE.launchDate, Literal(date_str, datatype=XSD.date)))
+                            except:
+                                pass
+                        
+                        
+                        self.g.add((mission_uri, self.SPACE.launchedBy, nasa_uri))
+                        
+                        missions_added += 1
+                
+                
+                astronauts_url = "http://api.open-notify.org/astros.json"
+                astro_response = requests.get(astronauts_url)
+                
+                if astro_response.status_code == 200:
+                    astro_data = astro_response.json()
+                    
+                    for person in astro_data.get('people', []):
+                        if person.get('craft') and person.get('name'):
+                            
+                            astronaut_id = person['name'].replace(' ', '_')
+                            astronaut_uri = self.SPACE[f"Astronaut_{astronaut_id}"]
+                            
+                            
                             self.g.add((astronaut_uri, RDF.type, self.SPACE.Astronaut))
-                            self.g.add((astronaut_uri, self.SPACE.name, Literal(astronaut_name, datatype=XSD.string)))
-                            self.g.add((astronaut_uri, self.SPACE.description, Literal(f"{astronaut_name} is a NASA astronaut.", datatype=XSD.string)))
-                        
-                        
-                        self.g.add((astronaut_uri, self.SPACE.participatedIn, mission_uri))
-                        self.g.add((mission_uri, self.SPACE.hasAstronaut, astronaut_uri))
-            
-            print(f"Added data for {len(missions)} NASA missions.")
+                            self.g.add((astronaut_uri, self.SPACE.name, Literal(person['name'], datatype=XSD.string)))
+                            self.g.add((astronaut_uri, self.SPACE.description, Literal(f"{person['name']} is an astronaut currently in space on {person['craft']}.", datatype=XSD.string)))
+                            
+                            
+                            craft_id = person['craft'].replace(' ', '_')
+                            craft_uri = self.SPACE[f"Spacecraft_{craft_id}"]
+                            
+                            
+                            if (craft_uri, RDF.type, self.SPACE.Spacecraft) not in self.g:
+                                self.g.add((craft_uri, RDF.type, self.SPACE.Spacecraft))
+                                self.g.add((craft_uri, self.SPACE.name, Literal(person['craft'], datatype=XSD.string)))
+                                self.g.add((craft_uri, self.SPACE.description, Literal(f"{person['craft']} is a spacecraft currently in orbit.", datatype=XSD.string)))
+                
+                print(f"Added data for {missions_added} NASA missions and {len(astro_data.get('people', []))} astronauts currently in space.")
+            else:
+                print(f"Failed to fetch NASA data: {response.status_code}")
         except Exception as e:
-            print(f"Error adding NASA data: {e}")
+            print(f"Error fetching NASA data: {e}")
+    
+    def fetch_exoplanet_data(self):
+        """Fetch data about exoplanets from the NASA Exoplanet Archive"""
+        try:
+            
+            exoplanet_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+pl_name,hostname,pl_orbper,pl_rade,pl_masse,pl_disc,pl_discmethod,pl_facility+from+ps+where+pl_controvflag=0+and+pl_masse+is+not+null+order+by+pl_masse+desc&format=json"
+            response = requests.get(exoplanet_url)
+            
+            if response.status_code == 200:
+                exoplanets = response.json()
+                
+                
+                milky_way_uri = self.SPACE.MilkyWay
+                
+                
+                for exoplanet in exoplanets[:20]:
+                    planet_id = exoplanet['pl_name'].replace(' ', '_').replace('-', '_')
+                    planet_uri = self.SPACE[f"Exoplanet_{planet_id}"]
+                    
+                    
+                    self.g.add((planet_uri, RDF.type, self.SPACE.Planet))
+                    self.g.add((planet_uri, self.SPACE.name, Literal(exoplanet['pl_name'], datatype=XSD.string)))
+                    
+                    
+                    if exoplanet.get('pl_masse'):
+                        
+                        self.g.add((planet_uri, self.SPACE.mass, Literal(float(exoplanet['pl_masse']), datatype=XSD.decimal)))
+                    
+                    if exoplanet.get('pl_rade'):
+                        
+                        self.g.add((planet_uri, self.SPACE.radius, Literal(float(exoplanet['pl_rade']), datatype=XSD.decimal)))
+                    
+                    if exoplanet.get('pl_orbper'):
+                        self.g.add((planet_uri, self.SPACE.orbitalPeriod, Literal(float(exoplanet['pl_orbper']), datatype=XSD.decimal)))
+                    
+                    
+                    if exoplanet.get('hostname'):
+                        star_id = exoplanet['hostname'].replace(' ', '_').replace('-', '_')
+                        star_uri = self.SPACE[f"Star_{star_id}"]
+                        
+                        
+                        if (star_uri, RDF.type, self.SPACE.Star) not in self.g:
+                            self.g.add((star_uri, RDF.type, self.SPACE.Star))
+                            self.g.add((star_uri, self.SPACE.name, Literal(exoplanet['hostname'], datatype=XSD.string)))
+                            self.g.add((star_uri, self.SPACE.description, Literal(f"{exoplanet['hostname']} is a star with at least one known exoplanet.", datatype=XSD.string)))
+                            self.g.add((star_uri, self.SPACE.belongsTo, milky_way_uri))
+                        
+                        
+                        self.g.add((planet_uri, self.SPACE.orbits, star_uri))
+                    
+                    
+                    self.g.add((planet_uri, self.SPACE.belongsTo, milky_way_uri))
+                    
+                    
+                    discovery_method = exoplanet.get('pl_discmethod', 'Unknown method')
+                    discovery_year = exoplanet.get('pl_disc', 'Unknown year')
+                    discovery_facility = exoplanet.get('pl_facility', 'Unknown facility')
+                    
+                    description = f"{exoplanet['pl_name']} is an exoplanet orbiting the star {exoplanet.get('hostname', 'unknown')}. "
+                    description += f"It was discovered in {discovery_year} using the {discovery_method} method by {discovery_facility}."
+                    
+                    self.g.add((planet_uri, self.SPACE.description, Literal(description, datatype=XSD.string)))
+                
+                print(f"Added data for {len(exoplanets[:20])} exoplanets.")
+            else:
+                print(f"Failed to fetch exoplanet data: {response.status_code}")
+        except Exception as e:
+            print(f"Error fetching exoplanet data: {e}")
     
     def save_ontology(self):
-        """Save the ontology to a Turtle file"""
+        """Save the ontology to a Turtle file or GraphDB"""
         try:
-            self.g.serialize(destination=self.output_path, format="turtle")
-            print(f"Ontology saved to {self.output_path}")
-            return True
+            if self.use_graphdb:
+                
+                
+                
+                
+                
+                headers = {
+                    'Content-Type': 'application/sparql-query',
+                    'Accept': 'application/json'
+                }
+                
+                clear_query = "CLEAR ALL"
+                requests.post(self.graphdb_url + "/statements", headers=headers, data=clear_query)
+                
+                
+                turtle_data = self.g.serialize(format="turtle")
+                
+                headers = {
+                    'Content-Type': 'text/turtle',
+                    'Accept': 'application/json'
+                }
+                
+                response = requests.post(self.graphdb_url + "/statements", headers=headers, data=turtle_data)
+                
+                if response.status_code in [200, 201, 204]:
+                    print(f"Ontology saved to GraphDB at {self.graphdb_url}")
+                    return True
+                else:
+                    print(f"Error saving to GraphDB: {response.status_code} - {response.text}")
+                    return False
+            else:
+                
+                self.g.serialize(destination=self.output_path, format="turtle")
+                print(f"Ontology saved to {self.output_path}")
+                return True
         except Exception as e:
             print(f"Error saving ontology: {e}")
             return False
@@ -421,6 +578,7 @@ if __name__ == "__main__":
     creator.fetch_solar_system_data()
     creator.fetch_spacex_data()
     creator.fetch_nasa_data()
+    creator.fetch_exoplanet_data()
     creator.save_ontology()
     
     
