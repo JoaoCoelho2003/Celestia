@@ -1,33 +1,42 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, send_file
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    jsonify,
+    redirect,
+    url_for,
+    send_file,
+)
 from app.ontology.creator import OntologyCreator
 from app.ontology.queries import OntologyQueries
 import os
-import json
 from rdflib import URIRef
 from rdflib.namespace import RDF
 from datetime import datetime
 import shutil
 from werkzeug.utils import secure_filename
 
-main = Blueprint('main', __name__)
+main = Blueprint("main", __name__)
 
 
 persistence_config = {
-    "method": "file",  
+    "method": "file",
     "graphdb_url": "http://localhost:7200/repositories/space",
-    "graphdb_repository": "space-ontology"
+    "graphdb_repository": "space-ontology",
 }
 
-@main.route('/')
-def index():
-    return render_template('index.html', persistence=persistence_config)
 
-@main.route('/create-ontology', methods=['POST'])
+@main.route("/")
+def index():
+    return render_template("index.html", persistence=persistence_config)
+
+
+@main.route("/create-ontology", methods=["POST"])
 def create_ontology():
     try:
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
+
         creator = OntologyCreator(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
         creator.create_ontology_structure()
         creator.fetch_solar_system_data()
@@ -35,307 +44,375 @@ def create_ontology():
         creator.fetch_nasa_data()
         creator.fetch_exoplanet_data()
         success = creator.save_ontology()
-        
+
         if success:
-            return jsonify({"status": "success", "message": "Ontology created successfully"})
+            return jsonify(
+                {"status": "success", "message": "Ontology created successfully"}
+            )
         else:
-            return jsonify({"status": "error", "message": "Failed to create ontology"}), 500
+            return (
+                jsonify({"status": "error", "message": "Failed to create ontology"}),
+                500,
+            )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@main.route('/explore')
+
+@main.route("/explore")
 def explore():
-    return render_template('explore.html', persistence=persistence_config)
+    return render_template("explore.html", persistence=persistence_config)
 
-@main.route('/sparql')
+
+@main.route("/entity")
+def entity_page():
+    return render_template("entity.html", persistence=persistence_config)
+
+
+@main.route("/sparql")
 def sparql():
-    return render_template('sparql.html', persistence=persistence_config)
+    return render_template("sparql.html", persistence=persistence_config)
 
-@main.route('/graph')
+
+@main.route("/graph")
 def graph():
-    return render_template('graph.html', persistence=persistence_config)
+    return render_template("graph.html", persistence=persistence_config)
 
-@main.route('/settings', methods=['GET', 'POST'])
+
+@main.route("/settings", methods=["GET", "POST"])
 def settings():
     global persistence_config
-    
-    if request.method == 'POST':
-        persistence_config["method"] = request.form.get('persistence_method', 'file')
-        persistence_config["graphdb_url"] = request.form.get('graphdb_url', 'http://localhost:7200/repositories/space')
-        
-        return redirect(url_for('main.settings'))
-    
-    return render_template('settings.html', persistence=persistence_config)
+
+    if request.method == "POST":
+        persistence_config["method"] = request.form.get("persistence_method", "file")
+        persistence_config["graphdb_url"] = request.form.get(
+            "graphdb_url", "http://localhost:7200/repositories/space"
+        )
+
+        return redirect(url_for("main.settings"))
+
+    return render_template("settings.html", persistence=persistence_config)
 
 
-@main.route('/api/classes')
+@main.route("/api/classes")
 def get_classes():
     try:
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
-        
-        if not use_graphdb and not os.path.exists('ontology/space.ttl'):
-            return jsonify({"error": "Ontology file not found. Please create the ontology first."}), 404
-        
+
+        if not use_graphdb and not os.path.exists("ontology/space.ttl"):
+            return (
+                jsonify(
+                    {
+                        "error": "Ontology file not found. Please create the ontology first."
+                    }
+                ),
+                404,
+            )
+
         queries = OntologyQueries(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
         classes = queries.get_all_classes()
         return jsonify(classes)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/instances')
+
+@main.route("/api/instances")
 def get_instances():
+    """Get instances of a class"""
+    class_uri = request.args.get("class")
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 30))
+
+    if not class_uri:
+        return jsonify({"error": "Class URI is required"}), 400
+
     try:
-        class_uri = request.args.get('class')
-        if not class_uri:
-            return jsonify({"error": "Class URI parameter is required"}), 400
-        
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
+
         queries = OntologyQueries(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
-        instances = queries.get_instances_of_class(class_uri)
-        return jsonify(instances)
+        all_instances = queries.get_instances_of_class(class_uri)
+
+        total_instances = len(all_instances)
+        total_pages = (total_instances + limit - 1) // limit
+
+        start_idx = (page - 1) * limit
+        end_idx = min(start_idx + limit, total_instances)
+        paginated_instances = all_instances[start_idx:end_idx]
+
+        return jsonify(
+            {
+                "instances": paginated_instances,
+                "total": total_instances,
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+            }
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/entity')
+
+@main.route("/api/entity")
 def get_entity():
     try:
-        uri = request.args.get('uri')
+        uri = request.args.get("uri")
         if not uri:
             return jsonify({"error": "URI parameter is required"}), 400
-        
+
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
+
         queries = OntologyQueries(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
-        
+
         entity_type = None
         uri_ref = URIRef(uri)
-        for s, p, o in queries.g.triples((uri_ref, RDF.type, None)):  
+        for s, p, o in queries.g.triples((uri_ref, RDF.type, None)):
             if "#" in str(o):
                 entity_type = str(o).split("#")[-1]
                 break
-        
-        
+
         label = queries.get_label(uri_ref)
-        
-        
+
         properties = queries.get_instance_properties(uri)
-        
-        
+
         relationships = queries.get_relationships(uri)
-        
-        return jsonify({
-            "uri": uri,
-            "label": label,
-            "type": entity_type,
-            "properties": properties,
-            "relationships": relationships
-        })
+
+        return jsonify(
+            {
+                "uri": uri,
+                "label": label,
+                "type": entity_type,
+                "properties": properties,
+                "relationships": relationships,
+            }
+        )
     except Exception as e:
         import traceback
+
         print(f"Error in get_entity: {e}")
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/search')
+
+@main.route("/api/search")
 def search():
     try:
-        term = request.args.get('term')
+        term = request.args.get("term")
         if not term:
             return jsonify({"error": "Search term parameter is required"}), 400
-        
+
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
+
         queries = OntologyQueries(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
         results = queries.search_by_name(term)
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/statistics')
+
+@main.route("/api/statistics")
 def get_statistics():
     try:
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
+
         queries = OntologyQueries(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
         stats = queries.get_statistics()
         return jsonify(stats)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/sparql', methods=['POST'])
+
+@main.route("/api/sparql", methods=["POST"])
 def execute_sparql():
     try:
-        query = request.json.get('query')
+        query = request.json.get("query")
         if not query:
             return jsonify({"error": "SPARQL query is required"}), 400
-        
+
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
+
         queries = OntologyQueries(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
         result = queries.execute_sparql_query(query)
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/graph-data')
+
+@main.route("/api/graph-data")
 def get_graph_data():
     try:
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
+
         queries = OntologyQueries(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
         graph_data = queries.get_graph_data()
         return jsonify(graph_data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/settings/persistence', methods=['POST'])
+
+@main.route("/api/settings/persistence", methods=["POST"])
 def update_persistence():
     try:
         global persistence_config
         data = request.json
-        
+
         if not data:
             return jsonify({"error": "No data provided"}), 400
-        
+
         persistence_config["method"] = data.get("method", "file")
-        
+
         if persistence_config["method"] == "graphdb":
-            persistence_config["graphdb_url"] = data.get("graphdb_url", "http://localhost:7200")
-            persistence_config["graphdb_repository"] = data.get("graphdb_repository", "space-ontology")
-        
-        return jsonify({
-            "status": "success", 
-            "message": "Persistence settings updated successfully",
-            "persistence": persistence_config
-        })
+            persistence_config["graphdb_url"] = data.get(
+                "graphdb_url", "http://localhost:7200"
+            )
+            persistence_config["graphdb_repository"] = data.get(
+                "graphdb_repository", "space-ontology"
+            )
+
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Persistence settings updated successfully",
+                "persistence": persistence_config,
+            }
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/export-ontology')
+
+@main.route("/api/export-ontology")
 def export_ontology():
     try:
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
+
         if use_graphdb:
             queries = OntologyQueries(use_graphdb=True, graphdb_url=graphdb_url)
             temp_file = "temp_export.ttl"
             queries.g.serialize(destination=temp_file, format="turtle")
-            return send_file(temp_file, as_attachment=True, download_name="space_ontology.ttl", mimetype="text/turtle")
+            return send_file(
+                temp_file,
+                as_attachment=True,
+                download_name="space_ontology.ttl",
+                mimetype="text/turtle",
+            )
         else:
-            if not os.path.exists('ontology/space.ttl'):
-                return jsonify({"error": "Ontology file not found. Please create the ontology first."}), 404
-            return send_file('../ontology/space.ttl', as_attachment=True, download_name="space_ontology.ttl", mimetype="text/turtle")
+            if not os.path.exists("ontology/space.ttl"):
+                return (
+                    jsonify(
+                        {
+                            "error": "Ontology file not found. Please create the ontology first."
+                        }
+                    ),
+                    404,
+                )
+            return send_file(
+                "../ontology/space.ttl",
+                as_attachment=True,
+                download_name="space_ontology.ttl",
+                mimetype="text/turtle",
+            )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/import-ontology', methods=['POST'])
+
+@main.route("/api/import-ontology", methods=["POST"])
 def import_ontology():
     try:
-        if 'file' not in request.files:
+        if "file" not in request.files:
             return jsonify({"error": "No file part"}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
+
+        file = request.files["file"]
+        if file.filename == "":
             return jsonify({"error": "No selected file"}), 400
-        
+
         if file:
             filename = secure_filename(file.filename)
-            temp_path = os.path.join('temp', filename)
-            
-            
-            os.makedirs('temp', exist_ok=True)
-            
+            temp_path = os.path.join("temp", filename)
+
+            os.makedirs("temp", exist_ok=True)
+
             file.save(temp_path)
-            
+
             use_graphdb = persistence_config["method"] == "graphdb"
             graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-            
+
             if use_graphdb:
-                
+
                 queries = OntologyQueries(use_graphdb=True, graphdb_url=graphdb_url)
                 queries.g.parse(temp_path, format="turtle")
                 queries.save_to_graphdb()
             else:
-                
-                os.makedirs('ontology', exist_ok=True)
-                shutil.copy(temp_path, 'ontology/space.ttl')
-            
-            
+
+                os.makedirs("ontology", exist_ok=True)
+                shutil.copy(temp_path, "ontology/space.ttl")
+
             os.remove(temp_path)
-            
-            return jsonify({
-                "status": "success", 
-                "message": "Ontology imported successfully"
-            })
+
+            return jsonify(
+                {"status": "success", "message": "Ontology imported successfully"}
+            )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/reset-ontology', methods=['POST'])
+
+@main.route("/api/reset-ontology", methods=["POST"])
 def reset_ontology():
     try:
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
-        
+
         if use_graphdb:
-            
+
             creator = OntologyCreator(use_graphdb=True, graphdb_url=graphdb_url)
-            creator.create_ontology_structure()  
+            creator.create_ontology_structure()
             creator.save_ontology()
         else:
-            
-            if os.path.exists('ontology/space.ttl'):
-                os.remove('ontology/space.ttl')
-            
-            
+
+            if os.path.exists("ontology/space.ttl"):
+                os.remove("ontology/space.ttl")
+
             creator = OntologyCreator(use_graphdb=False)
-            creator.create_ontology_structure()  
+            creator.create_ontology_structure()
             creator.save_ontology()
-        
-        return jsonify({
-            "status": "success", 
-            "message": "Ontology reset successfully"
-        })
+
+        return jsonify({"status": "success", "message": "Ontology reset successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@main.route('/api/system-info')
+
+@main.route("/api/system-info")
 def get_system_info():
     try:
         use_graphdb = persistence_config["method"] == "graphdb"
-        
+
         if use_graphdb:
-            
+
             size = "N/A (GraphDB)"
             last_modified = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         else:
-            
-            if os.path.exists('ontology/space.ttl'):
-                size_bytes = os.path.getsize('ontology/space.ttl')
+
+            if os.path.exists("ontology/space.ttl"):
+                size_bytes = os.path.getsize("ontology/space.ttl")
                 if size_bytes < 1024:
                     size = f"{size_bytes} bytes"
                 elif size_bytes < 1024 * 1024:
                     size = f"{size_bytes / 1024:.2f} KB"
                 else:
                     size = f"{size_bytes / (1024 * 1024):.2f} MB"
-                
-                last_modified = datetime.fromtimestamp(os.path.getmtime('ontology/space.ttl')).strftime("%Y-%m-%d %H:%M:%S")
+
+                last_modified = datetime.fromtimestamp(
+                    os.path.getmtime("ontology/space.ttl")
+                ).strftime("%Y-%m-%d %H:%M:%S")
             else:
                 size = "0 bytes"
                 last_modified = "N/A"
-        
-        return jsonify({
-            "size": size,
-            "last_modified": last_modified
-        })
+
+        return jsonify({"size": size, "last_modified": last_modified})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

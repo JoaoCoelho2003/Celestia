@@ -42,108 +42,123 @@
 
 {% block content %}
 <div class="row mb-4">
-	<div class="col-md-12">
-		<h1 style="margin-bottom: 0.5rem;">
-			<i class="bi bi-diagram-3" style="color: var(--accent);"></i>
-			<span>Graph Visualization</span>
-		</h1>
-		<p style="color: var(--text-secondary); margin-bottom: 2rem;">Explore the
-			relationships between entities in the space ontology</p>
-	</div>
+    <div class="col-md-12">
+        <h1 style="margin-bottom: 0.5rem;">
+            <i class="bi bi-diagram-3" style="color: var(--accent);"></i>
+            <span>Graph Visualization</span>
+        </h1>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Explore
+            the
+            relationships between entities in the space ontology</p>
+    </div>
 </div>
 
 <div class="row">
-	<div class="col-md-12">
-		<div class="card mb-4">
-			<div class="card-header bg-primary text-white">
-				<h2 class="h5 mb-0">Controls</h2>
-			</div>
-			<div class="card-body">
-				<div class="controls">
-					<div class="row">
-						<div class="col-md-4">
-							<div class="form-group">
-								<label for="filter-type">Filter by Type:</label>
-								<select id="filter-type" class="form-select">
-									<option value="all">All</option>
-									<option value="class">Classes</option>
-									<option value="Planet">Planets</option>
-									<option value="Star">Stars</option>
-									<option value="Moon">Moons</option>
-									<option value="SpaceMission">Spacial Missions</option>
-									<option value="Astronaut">Astronauts</option>
-									<option value="SpaceAgency">Space Agencies</option>
-									<option value="Spacecraft">Space Ships</option>
-								</select>
-							</div>
-						</div>
-						<div class="col-md-4">
-							<div class="form-group">
-								<label for="search-node">Search:</label>
-								<input type="text" id="search-node" class="form-control"
-									placeholder="Digite o nome da entidade">
-							</div>
-						</div>
-						<div class="col-md-4">
-							<div class="form-group">
-								<label for="layout-type">Layout Type:</label>
-								<select id="layout-type" class="form-select">
-									<option value="force">Force Directed</option>
-									<option value="circle">Circular</option>
-									<option value="grid">Grid</option>
-								</select>
-							</div>
-						</div>
-					</div>
-				</div>
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="h5 mb-0">Controls</h2>
+            </div>
+            <div class="card-body">
+                <div class="controls">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="filter-type">Filter by Type:</label>
+                                <select id="filter-type" class="form-select">
+                                    <option value="all">All</option>
+                                    <option value="class">Classes</option>
+                                    <option value="Planet">Planets</option>
+                                    <option value="Star">Stars</option>
+                                    <option value="Moon">Moons</option>
+                                    <option value="SpaceMission">Spacial
+                                        Missions</option>
+                                    <option
+                                        value="Astronaut">Astronauts</option>
+                                    <option value="SpaceAgency">Space
+                                        Agencies</option>
+                                    <option value="Spacecraft">Space
+                                        Ships</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="search-node">Search:</label>
+                                <input type="text" id="search-node"
+                                    class="form-control"
+                                    placeholder="Digite o nome da entidade">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="layout-type">Layout Type:</label>
+                                <select id="layout-type" class="form-select">
+                                    <option value="force">Force
+                                        Directed</option>
+                                    <option value="circle">Circular</option>
+                                    <option value="grid">Grid</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-				<div class="legend">
-					<div class="legend-item">
-						<span class="legend-color" style="background-color: #4e79a7;"></span>
-						<span>Class</span>
-					</div>
-					<div class="legend-item">
-						<span class="legend-color" style="background-color: #f28e2c;"></span>
-						<span>Planet</span>
-					</div>
-					<div class="legend-item">
-						<span class="legend-color" style="background-color: #e15759;"></span>
-						<span>Star</span>
-					</div>
-					<div class="legend-item">
-						<span class="legend-color" style="background-color: #76b7b2;"></span>
-						<span>Moon</span>
-					</div>
-					<div class="legend-item">
-						<span class="legend-color" style="background-color: #59a14f;"></span>
-						<span>Space Mission</span>
-					</div>
-					<div class="legend-item">
-						<span class="legend-color" style="background-color: #edc949;"></span>
-						<span>Astronaut</span>
-					</div>
-					<div class="legend-item">
-						<span class="legend-color" style="background-color: #af7aa1;"></span>
-						<span>Space Agency</span>
-					</div>
-					<div class="legend-item">
-						<span class="legend-color" style="background-color: #ff9da7;"></span>
-						<span>Spacecraft</span>
-					</div>
-				</div>
-			</div>
-		</div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-color"
+                            style="background-color: #4e79a7;"></span>
+                        <span>Class</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color"
+                            style="background-color: #f28e2c;"></span>
+                        <span>Planet</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color"
+                            style="background-color: #e15759;"></span>
+                        <span>Star</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color"
+                            style="background-color: #76b7b2;"></span>
+                        <span>Moon</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color"
+                            style="background-color: #59a14f;"></span>
+                        <span>Space Mission</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color"
+                            style="background-color: #edc949;"></span>
+                        <span>Astronaut</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color"
+                            style="background-color: #af7aa1;"></span>
+                        <span>Space Agency</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color"
+                            style="background-color: #ff9da7;"></span>
+                        <span>Spacecraft</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-		<div class="card">
-			<div class="card-header bg-success text-white">
-				<h2 class="h5 mb-0">Ontology Graph</h2>
-			</div>
-			<div class="card-body position-relative">
-				<div id="node-info" class="node-info"></div>
-				<div id="graph-container"></div>
-			</div>
-		</div>
-	</div>
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h2 class="h5 mb-0">Ontology Graph</h2>
+            </div>
+            <div class="card-body position-relative">
+                <div id="node-info" class="node-info"></div>
+                <div id="graph-container"></div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -208,7 +223,8 @@
                 .data(data.links)
                 .enter()
                 .append('text')
-                .attr('font-size', 8)
+                .attr('font-size', 6)
+                .attr('fill', '#fff')
                 .attr('text-anchor', 'middle')
                 .text(d => d.label);
             
@@ -234,6 +250,7 @@
                 .enter()
                 .append('text')
                 .attr('font-size', 8)
+                .attr('fill', "#fff")
                 .attr('text-anchor', 'middle')
                 .attr('dy', 15)
                 .text(d => d.label);
