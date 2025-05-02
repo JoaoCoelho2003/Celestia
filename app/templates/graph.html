@@ -271,7 +271,7 @@
                 $('#node-info').css('display', 'none');
             })
             .on('click', function(event, d) {
-                window.open(`/explore?uri=${encodeURIComponent(d.id)}`, '_blank');
+                window.open(`/entity?uri=${encodeURIComponent(d.id)}`, '_blank');
             });
             
             simulation.on('tick', () => {
