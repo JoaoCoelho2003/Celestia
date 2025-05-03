@@ -483,7 +483,7 @@
                 $('#node-info').css('display', 'none');
             })
             .on('click', function(event, d) {
-                window.open(`/entity?uri=${encodeURIComponent(d.id)}`, '_blank');
+                window.location.href = `/entity?uri=${encodeURIComponent(d.id)}`;
             });
             
             simulation.on('tick', () => {
