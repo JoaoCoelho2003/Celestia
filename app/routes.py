@@ -248,8 +248,13 @@ def get_graph_data():
         use_graphdb = persistence_config["method"] == "graphdb"
         graphdb_url = persistence_config["graphdb_url"] if use_graphdb else None
 
+        limit_per_type = int(request.args.get("limit_per_type", 25))
+        class_filter = request.args.get("class_filter")
+
         queries = OntologyQueries(use_graphdb=use_graphdb, graphdb_url=graphdb_url)
-        graph_data = queries.get_graph_data()
+        graph_data = queries.get_graph_data(
+            limit_per_type=limit_per_type, class_filter=class_filter
+        )
         return jsonify(graph_data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
