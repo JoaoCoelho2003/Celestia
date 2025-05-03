@@ -255,6 +255,19 @@ class OntologyQueries:
                         )
                         node_ids.add(node_id)
 
+            astronaut_mission_pairs = []
+            astronaut_uris = set()
+            mission_uris = set()
+
+            for s, p, o in self.g.triples((None, self.SPACE.participatedIn, None)):
+                astronaut_uri = str(s)
+                mission_uri = str(o)
+                astronaut_mission_pairs.append(
+                    (astronaut_uri, mission_uri, "participatedIn")
+                )
+                astronaut_uris.add(astronaut_uri)
+                mission_uris.add(mission_uri)
+
             instance_types = {}
             for s, p, o in self.g.triples((None, RDF.type, None)):
                 if (
@@ -266,8 +279,8 @@ class OntologyQueries:
                     if type_name not in instance_types:
                         instance_types[type_name] = []
 
-                    if len(instance_types[type_name]) < limit_per_type:
-                        instance_types[type_name].append(str(s))
+                    instance_uri = str(s)
+                    instance_types[type_name].append(instance_uri)
 
             if class_filter:
                 filtered_types = {}
@@ -275,6 +288,32 @@ class OntologyQueries:
                     if type_name == class_filter:
                         filtered_types[type_name] = instances
                 instance_types = filtered_types
+
+            if "Astronaut" in instance_types:
+                astronauts = instance_types["Astronaut"]
+                related_astronauts = [a for a in astronauts if a in astronaut_uris]
+                other_astronauts = [a for a in astronauts if a not in astronaut_uris]
+
+                selected_astronauts = related_astronauts[:limit_per_type]
+                if len(selected_astronauts) < limit_per_type:
+                    selected_astronauts.extend(
+                        other_astronauts[: limit_per_type - len(selected_astronauts)]
+                    )
+
+                instance_types["Astronaut"] = selected_astronauts
+
+            if "SpaceMission" in instance_types:
+                missions = instance_types["SpaceMission"]
+                related_missions = [m for m in missions if m in mission_uris]
+                other_missions = [m for m in missions if m not in mission_uris]
+
+                selected_missions = related_missions[:limit_per_type]
+                if len(selected_missions) < limit_per_type:
+                    selected_missions.extend(
+                        other_missions[: limit_per_type - len(selected_missions)]
+                    )
+
+                instance_types["SpaceMission"] = selected_missions
 
             for type_name, instances in instance_types.items():
                 type_uri = None
@@ -285,7 +324,7 @@ class OntologyQueries:
                         type_uri = str(s)
                         break
 
-                for instance_uri in instances:
+                for instance_uri in instances[:limit_per_type]:
                     if instance_uri not in node_ids:
                         s = URIRef(instance_uri)
                         nodes.append(
@@ -306,28 +345,33 @@ class OntologyQueries:
                                 }
                             )
 
-            all_relationships = []
+            for source_id, target_id, rel_type in astronaut_mission_pairs:
+                if source_id in node_ids and target_id in node_ids:
+                    links.append(
+                        {"source": source_id, "target": target_id, "label": rel_type}
+                    )
+
             for s, p, o in self.g.triples((None, None, None)):
                 if (
                     isinstance(s, URIRef)
                     and isinstance(o, URIRef)
                     and p != RDF.type
-                    and str(p) != "http://www.w3.org/2000/01/rdf-schema#subClassOf"
+                    and p != RDFS.subClassOf
+                    and p != self.SPACE.hasAstronaut
+                    and p != self.SPACE.participatedIn
                 ):
                     source_id = str(s)
                     target_id = str(o)
 
                     if source_id in node_ids and target_id in node_ids:
-                        all_relationships.append(
+                        rel_type = str(p).split("#")[-1]
+                        links.append(
                             {
                                 "source": source_id,
                                 "target": target_id,
-                                "label": str(p).split("#")[-1],
+                                "label": rel_type,
                             }
                         )
-
-            for rel in all_relationships:
-                links.append(rel)
 
         except Exception as e:
             print(f"Error in get_graph_data: {e}")
