@@ -4,15 +4,24 @@
 
 {% block extra_css %}
 <link rel="stylesheet"
-	href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
 <link rel="stylesheet"
-	href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
 <style>
-    .CodeMirror {
+    .CodeMirror.CodeMirror {
         height: 300px;
         border-radius: var(--radius-lg);
         font-family: var(--font-mono);
         border: 1px solid var(--border);
+    }
+
+    .CodeMirror.CodeMirror {
+	  background-color: #0B0F17 !important;
+	  border: 1px solid #0B0F17 !important;
+	}
+
+	.CodeMirror-gutters.CodeMirror-gutters {
+        background-color: #0B0F17 !important;
     }
     
     .example-query {
@@ -79,138 +88,145 @@
 
 {% block content %}
 <section style="padding: 2rem 0;">
-	<h1 style="margin-bottom: 0.5rem;">
-		<i class="bi bi-code-slash" style="color: var(--accent);"></i>
-		<span>SPARQL Queries</span>
-	</h1>
-	<p style="color: var(--text-secondary); margin-bottom: 2rem;">Execute SPARQL
-		queries on the space ontology</p>
+    <h1 style="margin-bottom: 0.5rem;">
+        <i class="bi bi-code-slash" style="color: var(--accent);"></i>
+        <span>SPARQL Queries</span>
+    </h1>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Execute SPARQL
+        queries on the space ontology</p>
 
-	<div class="grid grid-3" style="grid-template-columns: 2fr 1fr;">
-		<div>
-			<div class="card slide-up"
-				style="animation-delay: 0.1s; margin-bottom: 1.5rem;">
-				<div class="card-header">
-					<h2 class="card-header-title">
-						<i class="bi bi-code"></i>
-						<span>SPARQL Editor</span>
-					</h2>
-				</div>
-				<div class="card-body">
-					<textarea
-						id="sparql-editor">PREFIX space: <http://www.semanticweb.org/ontologies/space#>
+    <div class="grid grid-3" style="grid-template-columns: 2fr 1fr;">
+        <div>
+            <div class="card slide-up"
+                style="animation-delay: 0.1s; margin-bottom: 1.5rem;">
+                <div class="card-header">
+                    <h2 class="card-header-title">
+                        <i class="bi bi-code"></i>
+                        <span>SPARQL Editor</span>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <textarea
+                        id="sparql-editor">PREFIX space: <http://www.semanticweb.org/ontologies/space#>
 SELECT ?planet ?name
 WHERE {
   ?planet a space:Planet .
   ?planet space:name ?name .
 }</textarea>
-				</div>
-				<div class="card-footer" style="display: flex; justify-content: flex-end;">
-					<button id="execute-query" class="btn btn-primary">
-						<i class="bi bi-play-fill"></i>
-						<span>Execute Query</span>
-					</button>
-				</div>
-			</div>
+                </div>
+                <div class="card-footer"
+                    style="display: flex; justify-content: flex-end;">
+                    <button id="execute-query" class="btn btn-primary">
+                        <i class="bi bi-play-fill"></i>
+                        <span>Execute Query</span>
+                    </button>
+                </div>
+            </div>
 
-			<div class="card slide-up" style="animation-delay: 0.2s;">
-				<div class="card-header">
-					<h2 class="card-header-title">
-						<i class="bi bi-table"></i>
-						<span>Results</span>
-					</h2>
-					<div id="results-count"
-						style="color: var(--text-tertiary); font-size: 0.875rem;"></div>
-				</div>
-				<div class="card-body" id="results-container">
-					<div
-						style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
-						<i class="bi bi-arrow-up-circle"
-							style="font-size: 3rem; color: var(--text-tertiary); margin-bottom: 1rem;"></i>
-						<p style="color: var(--text-tertiary);">Execute a query to see results</p>
-					</div>
-				</div>
-			</div>
-		</div>
+            <div class="card slide-up" style="animation-delay: 0.2s;">
+                <div class="card-header">
+                    <h2 class="card-header-title">
+                        <i class="bi bi-table"></i>
+                        <span>Results</span>
+                    </h2>
+                    <div id="results-count"
+                        style="color: var(--text-tertiary); font-size: 0.875rem;"></div>
+                </div>
+                <div class="card-body" id="results-container">
+                    <div
+                        style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
+                        <i class="bi bi-arrow-up-circle"
+                            style="font-size: 3rem; color: var(--text-tertiary); margin-bottom: 1rem;"></i>
+                        <p style="color: var(--text-tertiary);">Execute a query
+                            to see results</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-		<div>
-			<div class="card slide-up" style="animation-delay: 0.3s;">
-				<div class="card-header">
-					<h2 class="card-header-title">
-						<i class="bi bi-bookmark"></i>
-						<span>Example Queries</span>
-					</h2>
-				</div>
-				<div class="card-body">
-					<div class="example-query" id="example-planets">
-						<div class="example-query-title">List all planets</div>
-						<div class="example-query-code">PREFIX space:
-							&lt;http://www.semanticweb.org/ontologies/space#&gt;
-							SELECT ?planet ?name
-							WHERE {
-							?planet a space:Planet .
-							?planet space:name ?name .
-							}</div>
-					</div>
+        <div>
+            <div class="card slide-up" style="animation-delay: 0.3s;">
+                <div class="card-header">
+                    <h2 class="card-header-title">
+                        <i class="bi bi-bookmark"></i>
+                        <span>Example Queries</span>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="example-query" id="example-planets">
+                        <div class="example-query-title">List all planets</div>
+                        <div class="example-query-code">PREFIX space:
+                            &lt;http://www.semanticweb.org/ontologies/space#&gt;
+                            SELECT ?planet ?name
+                            WHERE {
+                            ?planet a space:Planet .
+                            ?planet space:name ?name .
+                            }</div>
+                    </div>
 
-					<hr style="margin: 1.5rem 0; border-color: var(--border);">
+                    <hr style="margin: 1.5rem 0; border-color: var(--border);">
 
-					<div class="example-query" id="example-missions">
-						<div class="example-query-title">Find all space missions and their
-							agencies</div>
-						<div class="example-query-code">PREFIX space:
-							&lt;http://www.semanticweb.org/ontologies/space#&gt;
-							SELECT ?mission ?missionName ?agency ?agencyName
-							WHERE {
-							?mission a space:Mission .
-							?mission space:name ?missionName .
-							?mission space:operatedBy ?agency .
-							?agency space:name ?agencyName .
-							}</div>
-					</div>
+                    <div class="example-query" id="example-missions">
+                        <div class="example-query-title">Find all space missions
+                            and their
+                            agencies</div>
+                        <div class="example-query-code">PREFIX space:
+                            &lt;http://www.semanticweb.org/ontologies/space#&gt;
+                            SELECT ?mission ?missionName ?agency ?agencyName
+                            WHERE {
+                            ?mission a space:Mission .
+                            ?mission space:name ?missionName .
+                            ?mission space:operatedBy ?agency .
+                            ?agency space:name ?agencyName .
+                            }</div>
+                    </div>
 
-					<hr style="margin: 1.5rem 0; border-color: var(--border);">
+                    <hr style="margin: 1.5rem 0; border-color: var(--border);">
 
-					<div class="example-query" id="example-astronauts">
-						<div class="example-query-title">List astronauts and their missions</div>
-						<div class="example-query-code">PREFIX space:
-							&lt;http://www.semanticweb.org/ontologies/space#&gt;
-							SELECT ?astronaut ?astronautName ?mission ?missionName
-							WHERE {
-							?astronaut a space:Astronaut .
-							?astronaut space:name ?astronautName .
-							?astronaut space:participatedIn ?mission .
-							?mission space:name ?missionName .
-							}</div>
-					</div>
+                    <div class="example-query" id="example-astronauts">
+                        <div class="example-query-title">List astronauts and
+                            their missions</div>
+                        <div class="example-query-code">PREFIX space:
+                            &lt;http://www.semanticweb.org/ontologies/space#&gt;
+                            SELECT ?astronaut ?astronautName ?mission
+                            ?missionName
+                            WHERE {
+                            ?astronaut a space:Astronaut .
+                            ?astronaut space:name ?astronautName .
+                            ?astronaut space:participatedIn ?mission .
+                            ?mission space:name ?missionName .
+                            }</div>
+                    </div>
 
-					<hr style="margin: 1.5rem 0; border-color: var(--border);">
+                    <hr style="margin: 1.5rem 0; border-color: var(--border);">
 
-					<div class="example-query" id="example-spacecraft">
-						<div class="example-query-title">Find spacecraft and their
-							destinations</div>
-						<div class="example-query-code">PREFIX space:
-							&lt;http://www.semanticweb.org/ontologies/space#&gt;
-							SELECT ?spacecraft ?spacecraftName ?destination ?destinationName
-							WHERE {
-							?spacecraft a space:Spacecraft .
-							?spacecraft space:name ?spacecraftName .
-							?spacecraft space:destination ?destination .
-							?destination space:name ?destinationName .
-							}</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
+                    <div class="example-query" id="example-spacecraft">
+                        <div class="example-query-title">Find spacecraft and
+                            their
+                            destinations</div>
+                        <div class="example-query-code">PREFIX space:
+                            &lt;http://www.semanticweb.org/ontologies/space#&gt;
+                            SELECT ?spacecraft ?spacecraftName ?destination
+                            ?destinationName
+                            WHERE {
+                            ?spacecraft a space:Spacecraft .
+                            ?spacecraft space:name ?spacecraftName .
+                            ?spacecraft space:destination ?destination .
+                            ?destination space:name ?destinationName .
+                            }</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </section>
 {% endblock %}
 
 {% block extra_js %}
 <script
-	src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
 <script
-	src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/sparql/sparql.min.js"></script>
+    src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/sparql/sparql.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const editor = CodeMirror.fromTextArea(document.getElementById('sparql-editor'), {
