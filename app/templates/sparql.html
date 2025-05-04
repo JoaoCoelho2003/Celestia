@@ -174,9 +174,9 @@ WHERE {
                             &lt;http://www.semanticweb.org/ontologies/space#&gt;
                             SELECT ?mission ?missionName ?agency ?agencyName
                             WHERE {
-                            ?mission a space:Mission .
+                            ?mission a space:SpaceMission .
                             ?mission space:name ?missionName .
-                            ?mission space:operatedBy ?agency .
+                            ?mission space:launchedBy ?agency .
                             ?agency space:name ?agencyName .
                             }</div>
                     </div>
@@ -200,21 +200,6 @@ WHERE {
 
                     <hr style="margin: 1.5rem 0; border-color: var(--border);">
 
-                    <div class="example-query" id="example-spacecraft">
-                        <div class="example-query-title">Find spacecraft and
-                            their
-                            destinations</div>
-                        <div class="example-query-code">PREFIX space:
-                            &lt;http://www.semanticweb.org/ontologies/space#&gt;
-                            SELECT ?spacecraft ?spacecraftName ?destination
-                            ?destinationName
-                            WHERE {
-                            ?spacecraft a space:Spacecraft .
-                            ?spacecraft space:name ?spacecraftName .
-                            ?spacecraft space:destination ?destination .
-                            ?destination space:name ?destinationName .
-                            }</div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -249,11 +234,6 @@ WHERE {
         });
         
         document.getElementById('example-astronauts').addEventListener('click', function() {
-            editor.setValue(this.querySelector('.example-query-code').textContent);
-            editor.focus();
-        });
-        
-        document.getElementById('example-spacecraft').addEventListener('click', function() {
             editor.setValue(this.querySelector('.example-query-code').textContent);
             editor.focus();
         });
