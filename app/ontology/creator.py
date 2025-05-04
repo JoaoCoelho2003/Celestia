@@ -418,7 +418,7 @@ class OntologyCreator:
     def fetch_comet_data(self, sun_uri, milky_way_uri):
         """Fetch comet data from JPL Small-Body Database"""
         try:
-            sbdb_url = "https://ssd-api.jpl.nasa.gov/sbdb_query.api?fields=full_name,diameter,albedo,orbit_id,epoch,e,a,q,i,om,w,ma,per,moid,class&sb-kind=c&limit=2500"
+            sbdb_url = "https://ssd-api.jpl.nasa.gov/sbdb_query.api?fields=full_name,diameter,albedo,orbit_id,epoch,e,a,q,i,om,w,ma,per,moid,class&sb-kind=c"
             response = requests.get(sbdb_url)
             
             if response.status_code == 200:
@@ -652,7 +652,7 @@ class OntologyCreator:
     def fetch_exoplanet_data(self):
         """Fetch data about exoplanets from the NASA Exoplanet Archive"""
         try:
-            exoplanet_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+pl_name,hostname,pl_orbper,pl_rade,pl_masse,disc_year,discoverymethod,disc_facility+from+ps+where+pl_controv_flag=0+and+rownum+%3C+2500&format=json"
+            exoplanet_url = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+pl_name,hostname,pl_orbper,pl_rade,pl_masse,disc_year,discoverymethod,disc_facility+from+ps+where+pl_controv_flag=0&format=json"
             response = requests.get(exoplanet_url)
             
             if response.status_code == 200:

@@ -339,6 +339,23 @@ WHERE {
                         td.textContent = value;
                         row.appendChild(td);
                     });
+
+                    row.addEventListener('click', () => {
+                        let uri = null;
+
+                        for (const key in result) {
+                            if (result[key] && typeof result[key] === 'object' && result[key].uri) {
+                                uri = result[key].uri;
+                                break;
+                            }
+                        }
+
+                        if (uri) {
+                            window.location.href = `/entity?uri=${encodeURIComponent(uri)}`;
+                        } else {
+                            console.warn('Missing or invalid URI in result:', result);
+                        }
+                    });
                     
                     tbody.appendChild(row);
                 });
