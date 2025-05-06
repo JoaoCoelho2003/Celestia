@@ -53,6 +53,7 @@
         border-radius: 4px;
         transition: opacity 0.3s ease;
         opacity: 0;
+        text-align: center;
     }
     .loading-overlay.visible {
         display: flex;
@@ -65,6 +66,7 @@
         width: 50px;
         height: 50px;
         animation: spin 1s linear infinite;
+        margin: auto;
     }
     @keyframes spin {
         0% { transform: rotate(0deg); }
@@ -258,7 +260,6 @@
             <div class="card-body position-relative">
                 <div id="node-info" class="node-info"></div>
                 <div id="graph-container">
-                    <!-- Loading overlay inside the graph container -->
                     <div id="loading-overlay" class="loading-overlay">
                         <div>
                             <div class="loading-spinner"></div>
