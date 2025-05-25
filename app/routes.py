@@ -247,8 +247,61 @@ def create_repository():
         )
 
 
+@main.route("/api/create-repository-and-select", methods=["POST"])
+def create_repository_and_select():
+    global CURRENT_GRAPHDB_CONFIG
+
+    try:
+        data = request.json
+        host = data.get("host", CURRENT_GRAPHDB_CONFIG["host"])
+        port = data.get("port", CURRENT_GRAPHDB_CONFIG["port"])
+        repo_name = data.get("repository")
+
+        if not repo_name:
+            return (
+                jsonify({"status": "error", "message": "Repository name is required"}),
+                400,
+            )
+
+        if not repo_name.strip():
+            return (
+                jsonify(
+                    {"status": "error", "message": "Repository name cannot be empty"}
+                ),
+                400,
+            )
+
+        repository_url = f"http://{host}:{port}"
+        result = create_graphdb_repository(repository_url, repo_name)
+
+        if result["success"]:
+            CURRENT_GRAPHDB_CONFIG.update(
+                {"host": host, "port": port, "repository": repo_name}
+            )
+
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": result["message"],
+                    "config": CURRENT_GRAPHDB_CONFIG,
+                }
+            )
+        else:
+            return jsonify({"status": "error", "message": result["message"]}), 400
+
+    except Exception as e:
+        return (
+            jsonify(
+                {"status": "error", "message": f"Repository creation failed: {str(e)}"}
+            ),
+            500,
+        )
+
+
 @main.route("/api/import-ontology", methods=["POST"])
 def import_ontology():
+    global CURRENT_GRAPHDB_CONFIG
+
     try:
         if "file" not in request.files:
             return jsonify({"error": "No file selected for import"}), 400
@@ -263,14 +316,23 @@ def import_ontology():
             "repository", CURRENT_GRAPHDB_CONFIG["repository"]
         )
         create_repo = request.form.get("create_repository") == "true"
-
-        if repository == "Not Selected":
-            return (
-                jsonify({"error": "Please select a repository before importing"}),
-                400,
-            )
+        new_repo_name = request.form.get("new_repository_name")
 
         if create_repo:
+            if not new_repo_name:
+                return (
+                    jsonify(
+                        {
+                            "error": "Repository name is required when creating a new repository"
+                        }
+                    ),
+                    400,
+                )
+
+            repository = new_repo_name.strip()
+            if not repository:
+                return jsonify({"error": "Repository name cannot be empty"}), 400
+
             repository_url = f"http://{host}:{port}"
             result = create_graphdb_repository(repository_url, repository)
             if not result["success"]:
@@ -279,6 +341,16 @@ def import_ontology():
                         {"error": f"Failed to create repository: {result['message']}"}
                     ),
                     500,
+                )
+
+            CURRENT_GRAPHDB_CONFIG.update(
+                {"host": host, "port": port, "repository": repository}
+            )
+        else:
+            if repository == "Not Selected":
+                return (
+                    jsonify({"error": "Please select a repository before importing"}),
+                    400,
                 )
 
         if file:
@@ -304,6 +376,7 @@ def import_ontology():
                     {
                         "status": "success",
                         "message": "Ontology imported successfully to GraphDB",
+                        "config": CURRENT_GRAPHDB_CONFIG,
                     }
                 )
             else:
@@ -339,7 +412,9 @@ def export_ontology():
         )
 
         if response.status_code == 200:
-            temp_file = "temp_export.ttl"
+            temp_dir = os.path.join(os.getcwd(), "temp")
+            os.makedirs(temp_dir, exist_ok=True)
+            temp_file = os.path.join(temp_dir, "temp_export.ttl")
             with open(temp_file, "w", encoding="utf-8") as f:
                 f.write(response.text)
 
@@ -361,28 +436,41 @@ def export_ontology():
 
 @main.route("/api/create-base-ontology", methods=["POST"])
 def create_base_ontology():
+    global CURRENT_GRAPHDB_CONFIG
+
     try:
         data = request.json
         host = data.get("host", CURRENT_GRAPHDB_CONFIG["host"])
         port = data.get("port", CURRENT_GRAPHDB_CONFIG["port"])
         repository = data.get("repository", CURRENT_GRAPHDB_CONFIG["repository"])
         create_repo = data.get("create_repository", False)
+        new_repo_name = data.get("new_repository_name")
         export_path = data.get("export_path")
 
-        if repository == "Not Selected":
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Please select a repository before creating ontology",
-                    }
-                ),
-                400,
-            )
-
-        graphdb_url = f"http://{host}:{port}/repositories/{repository}"
-
         if create_repo:
+            if not new_repo_name:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Repository name is required when creating a new repository",
+                        }
+                    ),
+                    400,
+                )
+
+            repository = new_repo_name.strip()
+            if not repository:
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Repository name cannot be empty",
+                        }
+                    ),
+                    400,
+                )
+
             repository_url = f"http://{host}:{port}"
             result = create_graphdb_repository(repository_url, repository)
             if not result["success"]:
@@ -395,6 +483,23 @@ def create_base_ontology():
                     ),
                     500,
                 )
+
+            CURRENT_GRAPHDB_CONFIG.update(
+                {"host": host, "port": port, "repository": repository}
+            )
+        else:
+            if repository == "Not Selected":
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Please select a repository before creating ontology",
+                        }
+                    ),
+                    400,
+                )
+
+        graphdb_url = f"http://{host}:{port}/repositories/{repository}"
 
         try:
             creator = OntologyCreator(use_graphdb=True, graphdb_url=graphdb_url)
@@ -417,6 +522,7 @@ def create_base_ontology():
                     {
                         "status": "success",
                         "message": "Base ontology created and populated with space data successfully",
+                        "config": CURRENT_GRAPHDB_CONFIG,
                     }
                 )
             else:

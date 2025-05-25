@@ -279,6 +279,29 @@
 		</div>
 	</div>
 </div>
+
+<div id="repository-name-modal"
+	style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center;">
+	<div
+		style="background-color: var(--bg-surface); border-radius: var(--radius-lg); width: 400px; max-width: 90%; padding: 1.5rem; box-shadow: var(--shadow-lg);">
+		<h3 id="repo-modal-title"
+			style="margin-bottom: 1rem; font-size: 1.25rem;">Create New Repository</h3>
+		<p id="repo-modal-message"
+			style="color: var(--text-secondary); margin-bottom: 1rem;">Enter the name for
+			the new repository:</p>
+
+		<div class="form-group" style="margin-bottom: 1.5rem;">
+			<input type="text" id="new-repository-name" class="form-control"
+				placeholder="Repository name" />
+		</div>
+
+		<div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+			<button id="repo-modal-cancel" class="btn btn-secondary">Cancel</button>
+			<button id="repo-modal-confirm" class="btn btn-primary">Create &
+				Continue</button>
+		</div>
+	</div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -407,17 +430,94 @@
             document.getElementById('status-repository').textContent = selectedRepo;
         });
 
-        document.getElementById('import-form').addEventListener('submit', function(e) {
-            e.preventDefault();
+
+        function showRepositoryNameModal(title, message, onConfirm) {
+            document.getElementById('repo-modal-title').textContent = title;
+            document.getElementById('repo-modal-message').textContent = message;
+            document.getElementById('new-repository-name').value = '';
+            document.getElementById('repository-name-modal').style.display = 'flex';
             
+            setTimeout(() => {
+                document.getElementById('new-repository-name').focus();
+            }, 100);
+            
+            const confirmBtn = document.getElementById('repo-modal-confirm');
+            const cancelBtn = document.getElementById('repo-modal-cancel');
+            const inputField = document.getElementById('new-repository-name');
+            
+            const handleConfirm = () => {
+                const repoName = inputField.value.trim();
+                if (!repoName) {
+                    showAlert('warning', 'Please enter a repository name');
+                    return;
+                }
+                
+                document.getElementById('repository-name-modal').style.display = 'none';
+                onConfirm(repoName);
+                cleanup();
+            };
+            
+            const handleCancel = () => {
+                document.getElementById('repository-name-modal').style.display = 'none';
+                cleanup();
+            };
+            
+            const handleEnter = (e) => {
+                if (e.key === 'Enter') {
+                    handleConfirm();
+                }
+            };
+            
+            const cleanup = () => {
+                confirmBtn.removeEventListener('click', handleConfirm);
+                cancelBtn.removeEventListener('click', handleCancel);
+                inputField.removeEventListener('keypress', handleEnter);
+            };
+            
+            confirmBtn.addEventListener('click', handleConfirm);
+            cancelBtn.addEventListener('click', handleCancel);
+            inputField.addEventListener('keypress', handleEnter);
+        }
+
+		document.getElementById('export-btn').addEventListener('click', function() {
             if (currentConfig.repository === 'Not Selected') {
                 showAlert('warning', 'Please select a repository first');
                 return;
             }
             
-            const formData = new FormData(this);
+            window.location.href = '/api/export-ontology';
+        });
+
+        document.getElementById('import-form').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            const submitBtn = this.querySelector('button[type="submit"]');
+            const createRepo = document.getElementById('create-repo-import').checked;
+            
+            if (createRepo) {
+                showRepositoryNameModal(
+                    'Create Repository for Import',
+                    'Enter the name for the new repository where the ontology will be imported:',
+                    (repoName) => {
+                        performImport(repoName);
+                    }
+                );
+            } else {
+                if (currentConfig.repository === 'Not Selected') {
+                    showAlert('warning', 'Please select a repository first');
+                    return;
+                }
+                performImport(null);
+            }
+        });
+
+        function performImport(newRepoName) {
+            const formData = new FormData(document.getElementById('import-form'));
+            
+            if (newRepoName) {
+                formData.append('new_repository_name', newRepoName);
+            }
+            
+            const submitBtn = document.querySelector('#import-form button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<div class="spinner"></div><span style="margin-left: 0.5rem;">Importing...</span>';
             submitBtn.disabled = true;
@@ -433,6 +533,13 @@
                 
                 if (data.status === 'success') {
                     showAlert('success', 'Ontology imported successfully!');
+                    
+                    if (data.config) {
+                        currentConfig = data.config;
+                        updateFormFields();
+                        refreshRepositories();
+                    }
+                    
                     refreshStatus();
                 } else {
                     showAlert('danger', `Import failed: ${data.error}`);
@@ -443,40 +550,51 @@
                 submitBtn.disabled = false;
                 showAlert('danger', `Import error: ${error.message}`);
             });
-        });
-
-        document.getElementById('export-btn').addEventListener('click', function() {
-            if (currentConfig.repository === 'Not Selected') {
-                showAlert('warning', 'Please select a repository first');
-                return;
-            }
-            
-            window.location.href = '/api/export-ontology';
-        });
+        }
 
         document.getElementById('create-base-btn').addEventListener('click', function() {
-            if (currentConfig.repository === 'Not Selected') {
-                showAlert('warning', 'Please select a repository first');
-                return;
-            }
-            
-            const exportPath = document.getElementById('export-path').value;
             const createRepo = document.getElementById('create-repo-base').checked;
             
-            const submitBtn = this;
+            if (createRepo) {
+                showRepositoryNameModal(
+                    'Create Repository for Base Ontology',
+                    'Enter the name for the new repository where the base ontology will be created:',
+                    (repoName) => {
+                        performCreateBaseOntology(repoName);
+                    }
+                );
+            } else {
+                if (currentConfig.repository === 'Not Selected') {
+                    showAlert('warning', 'Please select a repository first');
+                    return;
+                }
+                performCreateBaseOntology(null);
+            }
+        });
+
+        function performCreateBaseOntology(newRepoName) {
+            const exportPath = document.getElementById('export-path').value;
+            
+            const submitBtn = document.getElementById('create-base-btn');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<div class="spinner"></div><span style="margin-left: 0.5rem;">Creating...</span>';
             submitBtn.disabled = true;
+            
+            const requestData = {
+                create_repository: !!newRepoName,
+                export_path: exportPath || null
+            };
+            
+            if (newRepoName) {
+                requestData.new_repository_name = newRepoName;
+            }
             
             fetch('/api/create-base-ontology', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    create_repository: createRepo,
-                    export_path: exportPath || null
-                }),
+                body: JSON.stringify(requestData),
             })
             .then(response => response.json())
             .then(data => {
@@ -485,6 +603,13 @@
                 
                 if (data.status === 'success') {
                     showAlert('success', 'Base ontology created successfully!');
+                    
+                    if (data.config) {
+                        currentConfig = data.config;
+                        updateFormFields();
+                        refreshRepositories();
+                    }
+                    
                     refreshStatus();
                 } else {
                     showAlert('danger', `Creation failed: ${data.message}`);
@@ -495,7 +620,7 @@
                 submitBtn.disabled = false;
                 showAlert('danger', `Creation error: ${error.message}`);
             });
-        });
+        }
 
         document.getElementById('create-repo-btn').addEventListener('click', function() {
             const repoName = document.getElementById('new-repo-name').value.trim();
