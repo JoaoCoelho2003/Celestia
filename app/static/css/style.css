@@ -230,6 +230,7 @@
 	background-color: var(--bg-elevated);
 	color: var(--text-primary);
 	border: 1px solid var(--border);
+	font-size: 0.90rem;
   }
   
   .btn-secondary:hover {

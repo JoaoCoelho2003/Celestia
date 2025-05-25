@@ -9,13 +9,13 @@
 		discover relationships between celestial bodies, space missions, and more</p>
 
 	<div style="display: flex; gap: 1rem; justify-content: center;">
-		<button id="createOntologyBtn" class="btn btn-primary">
-			<i class="bi bi-rocket-takeoff"></i>
-			<span>Generate Ontology</span>
-		</button>
-		<a href="/explore" class="btn btn-secondary">
+		<a href="/explore" class="btn btn-primary">
 			<i class="bi bi-search"></i>
-			<span>Start Exploring</span>
+			<span>Explore</span>
+		</a>
+		<a href="/management" class="btn btn-secondary">
+			<i class="bi bi-gear"></i>
+			<span>Management</span>
 		</a>
 	</div>
 </section>
@@ -30,7 +30,8 @@
 				</h2>
 			</div>
 			<div class="card-body">
-				<p>This project uses semantic technologies to represent and explore
+				<p>This project uses GraphDB and semantic technologies to represent and
+					explore
 					knowledge about space, including:</p>
 
 				<div
@@ -71,8 +72,8 @@
 					</div>
 				</div>
 
-				<p>The ontology was created using RDFLib and data was obtained from real
-					APIs:</p>
+				<p>The ontology uses GraphDB for storage and retrieval, with data obtained
+					from real APIs:</p>
 
 				<div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;">
 					<span class="api-tag">Solar System OpenData</span>
@@ -92,7 +93,6 @@
 					Image Credit: NASA, ESA, and the Hubble Heritage Team (STScI/AURA)
 				</p>
 			</div>
-
 		</div>
 
 		<div class="card">
@@ -132,10 +132,10 @@
 
 					<div class="feature-card">
 						<div class="feature-icon">
-							<i class="bi bi-database"></i>
+							<i class="bi bi-gear"></i>
 						</div>
-						<h3 class="feature-title">Store</h3>
-						<p class="feature-description">File system or GraphDB</p>
+						<h3 class="feature-title">Manage</h3>
+						<p class="feature-description">Import/export ontologies via GraphDB</p>
 					</div>
 				</div>
 
@@ -156,9 +156,7 @@
 
 				<div style="text-align: center; margin-top: 1.5rem;">
 					<span style="color: var(--text-tertiary); font-size: 0.875rem;">
-						Current persistence: <strong>{{ persistence.method|capitalize }}</strong>
-						{% if persistence.method == 'graphdb' %}({{ persistence.graphdb_url }}){%
-						endif %}
+						Powered by <strong>GraphDB</strong> semantic repository
 					</span>
 				</div>
 			</div>
@@ -178,94 +176,33 @@
 			<div class="steps">
 				<div class="step">
 					<div class="step-number">1</div>
-					<h3 class="step-title">Generate</h3>
-					<p class="step-description">Create the ontology with data from various
-						space APIs</p>
+					<h3 class="step-title">Setup</h3>
+					<p class="step-description">Configure GraphDB connection and create
+						repositories</p>
 				</div>
 
 				<div class="step">
 					<div class="step-number">2</div>
-					<h3 class="step-title">Explore</h3>
-					<p class="step-description">Browse through classes, instances and their
-						properties</p>
+					<h3 class="step-title">Import</h3>
+					<p class="step-description">Import existing ontologies or create base
+						ontologies</p>
 				</div>
 
 				<div class="step">
 					<div class="step-number">3</div>
 					<h3 class="step-title">Query</h3>
-					<p class="step-description">Write SPARQL queries to extract specific
-						information</p>
+					<p class="step-description">Write SPARQL queries to extract and modify
+						data</p>
 				</div>
 
 				<div class="step">
 					<div class="step-number">4</div>
 					<h3 class="step-title">Visualize</h3>
-					<p class="step-description">See the relationships between entities
-						graphically</p>
+					<p class="step-description">Explore relationships through interactive
+						graphs</p>
 				</div>
 			</div>
 		</div>
 	</div>
 </section>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const createOntologyBtn = document.getElementById('createOntologyBtn');
-        
-        if (createOntologyBtn) {
-            createOntologyBtn.addEventListener('click', function() {
-                this.disabled = true;
-                this.innerHTML = '<div class="spinner"></div><span style="margin-left: 0.5rem;">Generating...</span>';
-                
-                fetch('/create-ontology', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(data => {
-                            throw new Error(data.message || 'Unknown error');
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    const alert = document.createElement('div');
-                    alert.className = 'alert alert-success';
-                    alert.innerHTML = '<i class="bi bi-check-circle"></i><span>Ontology created successfully!</span>';
-                    
-                    createOntologyBtn.parentNode.insertBefore(alert, createOntologyBtn.nextSibling);
-                    
-                    createOntologyBtn.innerHTML = '<i class="bi bi-check-circle"></i><span>Ontology Generated</span>';
-                    createOntologyBtn.classList.remove('btn-primary');
-                    createOntologyBtn.classList.add('btn-success');
-                    
-                    setTimeout(() => {
-                        alert.style.opacity = '0';
-                        setTimeout(() => alert.remove(), 500);
-                    }, 5000);
-                })
-                .catch(error => {
-                    const alert = document.createElement('div');
-                    alert.className = 'alert alert-danger';
-                    alert.innerHTML = `<i class="bi bi-exclamation-triangle"></i><span>Error: ${error.message}</span>`;
-                    
-                    createOntologyBtn.parentNode.insertBefore(alert, createOntologyBtn.nextSibling);
-                    
-                    createOntologyBtn.disabled = false;
-                    createOntologyBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i><span>Try Again</span>';
-                    
-                    setTimeout(() => {
-                        alert.style.opacity = '0';
-                        setTimeout(() => alert.remove(), 500);
-                    }, 5000);
-                });
-            });
-        }
-    });
-</script>
 {% endblock %}
