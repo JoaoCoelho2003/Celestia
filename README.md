@@ -6,13 +6,58 @@ This project is part of the RPCW (Representation and Processing of Knowledge on 
 
 ## Table of Contents
 
-1. [Features](#features)
-2. [Pages Overview](#pages-overview)
-3. [Dependencies](#dependencies)
-4. [How to Run](#how-to-run)
-5. [Authors](#authors)
+1. [Tools Used](#tools-used)
+2. [Development Strategy](#development-strategy)
+3. [Features](#features)
+4. [Pages Overview](#pages-overview)
+5. [Dependencies](#dependencies)
+6. [How to Run](#how-to-run)
+7. [Authors](#authors)
 
 ---
+
+## Tools Used
+
+* **Python 3.10+** — Main language for scripting, data processing, and ontology population.
+* **RDFlib** — Python library for manipulating RDF graphs and serializing in Turtle format.
+* **Requests** — Python library for making HTTP calls to external APIs (NASA, SpaceX, Wikipedia, etc).
+* **Flask** — Web framework for the application's interface.
+* **GraphDB** — Triplestore for storing and querying the ontology using SPARQL.
+* **HTML/CSS/JavaScript** — For the application’s frontend, with Bootstrap Icons and CodeMirror for query editing.
+* **External APIs** — NASA, SpaceX, Wikipedia, JPL Small-Body Database, Solar System OpenData.
+
+## Development Strategy
+
+1. **Ontology Modeling**
+
+   * Analysis of the problem domain (space exploration) and identification of key entities: celestial bodies, space missions, astronauts, agencies, spacecraft, etc.
+   * Definition of relevant classes, properties, and relationships, following best modeling practices in OWL/RDF.
+   * Implementation of the ontology's base structure in Python, using the RDFlib library to ensure flexibility and easy maintenance.
+
+2. **Automatic Ontology Population**
+
+   * Collection of real data from public APIs (NASA, SpaceX, Wikipedia, JPL Small-Body Database, Solar System OpenData).
+   * Conversion of the collected data into ontology instances, automatically creating entities and relationships among them.
+
+3. **Persistence and Querying**
+
+   * Serialization of the ontology into a Turtle (`.ttl`) file to facilitate sharing and reuse.
+   * Integration with GraphDB for persistent storage and efficient execution of SPARQL queries.
+   * Implementation of SPARQL queries for exploration, validation, and knowledge extraction from the ontology.
+
+4. **Web Application Development**
+
+   * Creation of an intuitive web interface using Flask, allowing users to explore, search, and query the ontology.
+   * Implementation of features for importing/exporting ontologies, executing custom SPARQL queries, and visualizing relationships through interactive graphical formats.
+   * Use of HTML, CSS, and JavaScript to deliver a modern and responsive user experience.
+
+5. **Testing and Validation**
+
+   * Execution of manual and automated tests to ensure data integrity and the correct functioning of queries.
+   * Iterative adjustments to ontology modeling and population scripts based on test results and user feedback.
+   * Continuous validation of GraphDB integration and the web interface.
+
+This approach ensures a robust, scalable, and user-friendly solution for representing and exploring knowledge in the space domain.
 
 ## Features
 
