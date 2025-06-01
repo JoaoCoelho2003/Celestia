@@ -222,33 +222,6 @@ class OntologyQueries:
         if not uri:
             return "Unknown"
 
-        uri = URIRef(uri) if not isinstance(uri, URIRef) else uri
-
-        if self.use_graphdb:
-            try:
-                query = f"""
-                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-                PREFIX space: <http://www.semanticweb.org/ontologies/space#>
-                SELECT ?label WHERE {{
-                    <{uri}> rdfs:label ?label .
-                }} UNION {{
-                    <{uri}> space:name ?label .
-                }}
-                LIMIT 1
-                """
-                self.sparql.setQuery(query)
-                results = self.sparql.query().convert()
-
-                if "results" in results and "bindings" in results["results"]:
-                    bindings = results["results"]["bindings"]
-                    if bindings:
-                        return bindings[0]["label"]["value"]
-            except Exception as e:
-                print(f"Error getting label for {uri}: {e}")
-        else:
-            for s, p, o in self.g.triples((uri, RDFS.label, None)):
-                return o.value
-
         if "#" in str(uri):
             return str(uri).split("#")[-1]
         return str(uri)
