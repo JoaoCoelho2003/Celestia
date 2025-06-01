@@ -12,7 +12,8 @@ This project is part of the RPCW (Representation and Processing of Knowledge on 
 4. [Pages Overview](#pages-overview)
 5. [Dependencies](#dependencies)
 6. [How to Run](#how-to-run)
-7. [Authors](#authors)
+7. [Start Guide](#start-guide)
+8. [Authors](#authors)
 
 ---
 
@@ -127,6 +128,26 @@ To start the application, simply run the `run.py` script using Python:
 ```bash
 python3 run.py
 ```
+
+
+## Start Guide
+
+This guide provides a quick sequence of steps to begin configuring and using the application.
+
+1. **Setup**  
+   Set up the connection to GraphDB and create the necessary repositories.
+
+2. **Import**  
+   Import existing ontologies or create base ontologies to structure the data.
+
+3. **Query**  
+   Use SPARQL queries to extract, modify, and manage the stored data.
+
+4. **Visualize**  
+   Explore the data and its relationships through interactive graphs to facilitate analysis.
+
+It is essential to strictly follow steps 1 and 2 to ensure proper and effective setup of the application's working environment.
+
 
 ## Authors
 
