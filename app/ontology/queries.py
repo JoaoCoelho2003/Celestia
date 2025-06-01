@@ -1,7 +1,8 @@
-import requests
 from rdflib import Graph, Namespace, URIRef
 from rdflib.namespace import RDF, RDFS
 from SPARQLWrapper import SPARQLWrapper, JSON, POST
+import requests
+import re
 
 
 class OntologyQueries:
@@ -23,30 +24,106 @@ class OntologyQueries:
         self.SPACE = Namespace("http://www.semanticweb.org/ontologies/space#")
         self.g.bind("space", self.SPACE)
 
+    def is_update_query(self, query_string):
+        cleaned_query = re.sub(r"#.*?\n", "\n", query_string)
+        cleaned_query = re.sub(r"\s+", " ", cleaned_query).strip()
+
+        tokens = cleaned_query.upper().split()
+
+        update_keywords = [
+            "INSERT",
+            "DELETE",
+            "CLEAR",
+            "DROP",
+            "CREATE",
+            "LOAD",
+            "COPY",
+            "MOVE",
+            "ADD",
+        ]
+
+        for token in tokens:
+            if token in update_keywords:
+                return True
+        return False
+
     def execute_sparql_query(self, query_string):
         try:
             if self.use_graphdb:
-                query_upper = query_string.upper().strip()
+                is_update = self.is_update_query(query_string)
 
-                if any(
-                    query_upper.startswith(op)
-                    for op in ["INSERT", "DELETE", "CLEAR", "DROP", "CREATE"]
-                ):
-                    self.sparql.setMethod(POST)
-                    self.sparql.setQuery(query_string)
-                    self.sparql.setReturnFormat(JSON)
+                print(f"Query type detected: {'UPDATE' if is_update else 'SELECT'}")
+                print(f"Query: {query_string}")
+
+                if is_update:
+                    try:
+                        print("Executing UPDATE query...")
+
+                        headers = {
+                            "Content-Type": "application/sparql-update",
+                            "Accept": "text/plain",
+                        }
+
+                        response = requests.post(
+                            f"{self.graphdb_url}/statements",
+                            data=query_string,
+                            headers=headers,
+                            timeout=30,
+                        )
+
+                        print(f"Update response status: {response.status_code}")
+                        print(f"Update response text: {response.text}")
+
+                        if response.status_code in [200, 204]:
+                            return {
+                                "success": True,
+                                "message": f"Update executed successfully. Status: {response.status_code}",
+                                "results": [],
+                                "variables": [],
+                            }
+                        else:
+                            return {
+                                "success": False,
+                                "error": f"Update failed with status {response.status_code}: {response.text}",
+                            }
+
+                    except Exception as e:
+                        print(f"Exception during update: {str(e)}")
+                        return {"success": False, "error": str(e)}
+
+                else:
+                    print("Executing SELECT query...")
 
                     try:
-                        result = self.sparql.query()
-                        return {
-                            "success": True,
-                            "message": "Update executed successfully",
+                        headers = {
+                            "Content-Type": "application/x-www-form-urlencoded",
+                            "Accept": "application/sparql-results+json",
                         }
+
+                        data = {"query": query_string}
+
+                        response = requests.post(
+                            f"{self.graphdb_url}",
+                            data=data,
+                            headers=headers,
+                            timeout=30,
+                        )
+
+                        print(f"SELECT response status: {response.status_code}")
+
+                        if response.status_code == 200:
+                            results = response.json()
+                            print(f"SELECT results: {results}")
+                        else:
+                            print(f"SELECT failed: {response.text}")
+                            return {
+                                "success": False,
+                                "error": f"Query failed: {response.text}",
+                            }
+
                     except Exception as e:
+                        print(f"Exception during SELECT: {str(e)}")
                         return {"success": False, "error": str(e)}
-                else:
-                    self.sparql.setQuery(query_string)
-                    results = self.sparql.query().convert()
 
                     formatted_results = []
                     if "results" in results and "bindings" in results["results"]:
@@ -97,6 +174,7 @@ class OntologyQueries:
                 }
 
         except Exception as e:
+            print(f"General exception: {str(e)}")
             return {"success": False, "error": str(e)}
 
     def _reload_local_graph(self):

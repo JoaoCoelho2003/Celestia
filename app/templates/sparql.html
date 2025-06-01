@@ -200,6 +200,19 @@ WHERE {
 
                     <hr style="margin: 1.5rem 0; border-color: var(--border);">
 
+                    <div class="example-query" id="example-insert">
+                        <div class="example-query-title">Insert Planet</div>
+                        <div class="example-query-code">PREFIX space:
+                            &lt;http://www.semanticweb.org/ontologies/space#&gt;
+
+                            INSERT DATA {
+                            space:FakePlanet123 a space:Planet ;
+                            space:name "Fake Planet" ;
+                            space:mass 5.972e24 ;
+                            space:radius 6371 ;
+                            space:belongsTo space:MilkyWay .
+                            }</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -234,6 +247,11 @@ WHERE {
         });
         
         document.getElementById('example-astronauts').addEventListener('click', function() {
+            editor.setValue(this.querySelector('.example-query-code').textContent);
+            editor.focus();
+        });
+
+        document.getElementById('example-insert').addEventListener('click', function() {
             editor.setValue(this.querySelector('.example-query-code').textContent);
             editor.focus();
         });
