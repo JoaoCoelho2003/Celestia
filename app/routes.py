@@ -445,7 +445,6 @@ def create_base_ontology():
         repository = data.get("repository", CURRENT_GRAPHDB_CONFIG["repository"])
         create_repo = data.get("create_repository", False)
         new_repo_name = data.get("new_repository_name")
-        export_path = data.get("export_path")
 
         if create_repo:
             if not new_repo_name:
@@ -510,12 +509,6 @@ def create_base_ontology():
             creator.fetch_exoplanet_data()
 
             success = creator.save_ontology()
-
-            if success and export_path:
-                try:
-                    creator.g.serialize(destination=export_path, format="turtle")
-                except Exception as e:
-                    print(f"Warning: Could not save to local path {export_path}: {e}")
 
             if success:
                 return jsonify(
@@ -605,6 +598,59 @@ def clear_repository():
                 {
                     "status": "error",
                     "message": f"Repository clear operation failed: {str(e)}",
+                }
+            ),
+            500,
+        )
+
+
+@main.route("/api/delete-repository", methods=["POST"])
+def delete_repository():
+    try:
+        data = request.json
+        host = data.get("host", CURRENT_GRAPHDB_CONFIG["host"])
+        port = data.get("port", CURRENT_GRAPHDB_CONFIG["port"])
+        repository = data.get("repository", CURRENT_GRAPHDB_CONFIG["repository"])
+
+        if repository == "Not Selected":
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Please select a repository to delete",
+                    }
+                ),
+                400,
+            )
+
+        repository_url = f"http://{host}:{port}/rest/repositories/{repository}"
+
+        response = requests.delete(repository_url, timeout=30)
+
+        if response.status_code in [200, 204]:
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": f"Repository '{repository}' deleted successfully",
+                }
+            )
+        else:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": f"Failed to delete repository '{repository}': {response.text}",
+                    }
+                ),
+                500,
+            )
+
+    except Exception as e:
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": f"Repository deletion operation failed: {str(e)}",
                 }
             ),
             500,

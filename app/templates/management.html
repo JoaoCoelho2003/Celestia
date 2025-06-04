@@ -189,9 +189,25 @@
                                 Remove all data from the current repository
                             </p>
                         </div>
-                        <button id="clear-repo-btn" class="btn btn-danger">
+                        <button id="clear-repo-btn" class="btn btn-warning">
                             <i class="bi bi-trash"></i>
                             <span>Clear</span>
+                        </button>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                        <div>
+                            <h3
+                                style="font-size: 1rem; margin-bottom: 0.25rem;">Delete
+                                Repository</h3>
+                            <p
+                                style="color: var(--text-tertiary); font-size: 0.875rem; margin: 0;">
+                                Permanently delete the selected repository
+                            </p>
+                        </div>
+                        <button id="delete-repo-btn" class="btn btn-danger">
+                            <i class="bi bi-trash-fill"></i>
+                            <span>Delete</span>
                         </button>
                     </div>
                 </div>
@@ -665,22 +681,19 @@
         });
 
         function performCreateBaseOntology(newRepoName) {
-            const exportPath = document.getElementById('export-path').value;
-            
             const submitBtn = document.getElementById('create-base-btn');
             const originalText = submitBtn.innerHTML;
             submitBtn.innerHTML = '<div class="spinner"></div><span style="margin-left: 0.5rem;">Creating...</span>';
             submitBtn.disabled = true;
-            
+
             const requestData = {
                 create_repository: !!newRepoName,
-                export_path: exportPath || null
             };
-            
+
             if (newRepoName) {
                 requestData.new_repository_name = newRepoName;
             }
-            
+
             fetch('/api/create-base-ontology', {
                 method: 'POST',
                 headers: {
@@ -692,7 +705,7 @@
             .then(data => {
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
-                
+
                 if (data.status === 'success') {
                     showAlert('success', 'Base ontology created successfully!');
                     
@@ -774,6 +787,46 @@
                     .catch(error => {
                         showAlert('danger', `Error clearing repository: ${error.message}`);
                     });
+                }
+            );
+        });
+
+        document.getElementById('delete-repo-btn').addEventListener('click', function () {
+            if (currentConfig.repository === 'Not Selected') {
+                showAlert('warning', 'Please select a repository first');
+                return;
+            }
+
+            showConfirmationModal(
+                'Delete Repository',
+                `Are you sure you want to permanently delete repository '${currentConfig.repository}'? This action cannot be undone.`,
+                () => {
+                    fetch('/api/delete-repository', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            host: currentConfig.host,
+                            port: currentConfig.port,
+                            repository: currentConfig.repository,
+                        }),
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                showAlert('success', `Repository '${currentConfig.repository}' deleted successfully!`);
+                                currentConfig.repository = 'Not Selected';
+                                updateBackendConfig({ repository: 'Not Selected' });
+                                refreshRepositories();
+                                refreshStatus();
+                            } else {
+                                showAlert('danger', `Failed to delete repository: ${data.message}`);
+                            }
+                        })
+                        .catch(error => {
+                            showAlert('danger', `Error deleting repository: ${error.message}`);
+                        });
                 }
             );
         });

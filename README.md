@@ -1,4 +1,4 @@
-# RPCW_TP
+![Banner](public/banner.png)
 
 This project is part of the RPCW (Representation and Processing of Knowledge on the Web) course. It focuses on creating and managing an ontology-based system for representing and querying data related to space exploration. The system uses RDF and OWL standards to define and query relationships between entities such as astronauts, space missions, celestial bodies, and more.
 
